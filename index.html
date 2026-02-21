@@ -1169,7 +1169,7 @@ function drawTitleScreen() {
   ctx.font = '16px monospace';
   const blink = Math.sin(frameCount * 0.05) > 0;
   if (blink) {
-    ctx.fillText('Press SPACE to Start', W / 2, H * 0.72);
+    ctx.fillText('Press SPACE or Tap to Start', W / 2, H * 0.72);
   }
 
   ctx.fillStyle = '#888';

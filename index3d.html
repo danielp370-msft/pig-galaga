@@ -60,9 +60,8 @@
   <div class="info">← → or A/D to move</div>
   <div class="info">SPACE or Z to shoot</div>
   <div class="info">B to drop electric bomb (5 per wave)</div>
-  <div class="start blink">Press SPACE to Start</div>
-</div>
-<div id="baconBar">
+  <div class="start blink">Press SPACE or Tap to Start</div>
+</div><div id="baconBar">
   <div class="label">🥓 BACON BOOST <span id="baconTime">10</span>s 🥓</div>
   <div class="bar"><div class="fill" id="baconFill" style="width:100%"></div></div>
 </div>
@@ -572,6 +571,17 @@ function startGame() {
   document.getElementById('overlay').style.display = 'none';
 }
 
+// Overlay click/tap to start or restart
+document.getElementById('overlay').addEventListener('click', () => {
+  if (!gameStarted) startGame();
+  else if (gameOver) restartGame();
+});
+document.getElementById('overlay').addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (!gameStarted) startGame();
+  else if (gameOver) restartGame();
+});
+
 function restartGame() {
   score = 0; lives = 3; wave = 1;
   gameOver = false; invincibleTimer = 120; baconBoostTimer = 0; bombs = 5;
@@ -953,7 +963,7 @@ function playerHit() {
     ov.innerHTML = `
       <h1 style="color:#ff6b6b">GAME OVER</h1>
       <h2 style="color:#ffdd57">Score: ${score}</h2>
-      <div class="start blink">Press ENTER to restart</div>
+      <div class="start blink">Press ENTER or Tap to restart</div>
     `;
     ov.style.display = 'flex';
     ov.classList.add('active');

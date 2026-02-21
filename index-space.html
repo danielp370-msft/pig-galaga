@@ -501,8 +501,9 @@ function addEnemy(pos, type, hp) {
   scene.add(mesh);
 
   const homePos = pos.clone();
+  const origOffset = pos.clone(); // will be made relative after wave spawns
   enemies.push({
-    mesh, type, hp, maxHp: hp, points, scale, homePos,
+    mesh, type, hp, maxHp: hp, points, scale, homePos, origOffset,
     alive: true, diving: false, diveDir: new THREE.Vector3(),
     diveTime: 0, frame: Math.random() * 100, orbitAngle: Math.random() * Math.PI * 2,
     orbitSpeed: 0.002 + Math.random() * 0.003
@@ -531,6 +532,14 @@ function initGame() {
   wave++;
   announceWave(wave);
   spawnWave(wave);
+  // Compute formation offsets relative to center of mass
+  if (enemies.length > 0) {
+    const center = new THREE.Vector3();
+    let count = 0;
+    enemies.forEach(e => { if (e.alive) { center.add(e.homePos); count++; } });
+    center.divideScalar(count || 1);
+    enemies.forEach(e => { if (e.alive) e.origOffset = e.homePos.clone().sub(center); });
+  }
 }
 
 function announceWave(w) {
@@ -717,27 +726,38 @@ function update(dt) {
   });
 
   // ── Update enemies ──
-  // Predict where player will be — target a point ahead of the player
+  // Predict where player will be — but don't overshoot
   const playerSpeed = shipVel.length();
-  const interceptPoint = shipPos.clone().add(fwd.clone().multiplyScalar(playerSpeed * 80 + 10));
+  const interceptPoint = shipPos.clone().add(fwd.clone().multiplyScalar(playerSpeed * 30 + 5));
 
   enemies.forEach(e => {
     if (!e.alive) return;
     e.frame++;
 
-    // Chase: formation tries to get AHEAD of the player
-    const toIntercept = interceptPoint.clone().sub(e.homePos);
-    const homeDist = toIntercept.length();
-    const chaseSpeed = 0.15 + wave * 0.02;
-    if (homeDist > 10) {
-      e.homePos.add(toIntercept.normalize().multiplyScalar(Math.min(chaseSpeed, homeDist * 0.05)));
+    // Chase: each pig targets intercept point offset by its formation position
+    const myTarget = interceptPoint.clone().add(e.origOffset);
+    const toTarget = myTarget.sub(e.homePos);
+    const homeDist = toTarget.length();
+    const chaseSpeed = 0.12 + wave * 0.015;
+    if (homeDist > 8) {
+      e.homePos.add(toTarget.normalize().multiplyScalar(Math.min(chaseSpeed, homeDist * 0.03)));
     }
 
-    // Orbit around home position
+    // Repel from nearby pigs to prevent clumping
+    enemies.forEach(other => {
+      if (other === e || !other.alive) return;
+      const sep = e.homePos.clone().sub(other.homePos);
+      const d = sep.length();
+      if (d < 6 && d > 0.1) {
+        e.homePos.add(sep.normalize().multiplyScalar(0.05 * (6 - d)));
+      }
+    });
+
+    // Orbit around home position — wider orbit
     e.orbitAngle += e.orbitSpeed;
-    const orbR = 2;
+    const orbR = 3.5;
     e.mesh.position.x = e.homePos.x + Math.sin(e.orbitAngle) * orbR;
-    e.mesh.position.y = e.homePos.y + Math.sin(e.orbitAngle * 0.7) * orbR * 0.5;
+    e.mesh.position.y = e.homePos.y + Math.sin(e.orbitAngle * 0.7) * orbR * 0.6;
     e.mesh.position.z = e.homePos.z + Math.cos(e.orbitAngle) * orbR;
 
     // Face toward player

@@ -469,12 +469,20 @@ window.addEventListener('keyup', e => { keys[e.key] = false; });
 
 // Touch
 let touchX = null, touchY = null, touchShooting = false;
+let lastTapTime = 0;
 renderer.domElement.addEventListener('touchstart', e => {
   e.preventDefault();
   const rect = renderer.domElement.getBoundingClientRect();
   touchX = ((e.touches[0].clientX - rect.left) / rect.width - 0.5) * FIELD_W;
   touchY = (e.touches[0].clientY - rect.top) / rect.height;
   touchShooting = true;
+  // Double-tap to bomb
+  const now = Date.now();
+  if (now - lastTapTime < 300) {
+    keys['b'] = true;
+    setTimeout(() => { keys['b'] = false; }, 100);
+  }
+  lastTapTime = now;
   if (!gameStarted) startGame();
   if (gameOver) restartGame();
 });

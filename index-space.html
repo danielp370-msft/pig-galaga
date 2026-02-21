@@ -1185,6 +1185,8 @@ function drawProximityAlert() {
     proxCtx.restore();
   });
 }
+
+function spawnBullet(offset, isBacon) {
   const mat = isBacon ? baconMat.clone() : bMat.clone();
   const mesh = new THREE.Mesh(bGeo, mat);
   const dir = fwd.clone();

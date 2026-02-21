@@ -496,28 +496,28 @@ function spawnWave(w) {
   // Forward cluster — main group, fleet 0
   addRing(new THREE.Vector3(0, 0, -dist), 5 + w * 0.5, 8 + w, 0, 1 + extra, 0);
 
-  // Side rings — far out, fleet 1
+  // Side rings — distant, fleet 1
   if (w >= 2) {
-    const sideDist = dist * 5;
+    const sideDist = dist * 3;
     addRing(new THREE.Vector3(-sideDist, 8, -sideDist * 0.6), 5, 6, 1, 2 + extra, 1);
     addRing(new THREE.Vector3(sideDist, -8, -sideDist * 0.6), 5, 6, 1, 2 + extra, 1);
   }
 
-  // Above/below — very far, fleet 2
+  // Above/below — far, fleet 2
   if (w >= 3) {
-    const vertDist = dist * 6;
+    const vertDist = dist * 3.5;
     addGrid(new THREE.Vector3(0, vertDist * 0.5, -vertDist * 0.7), 2, 4, 2.5, 2, 3 + extra, 2);
     addGrid(new THREE.Vector3(0, -vertDist * 0.5, -vertDist * 0.5), 2, 3, 2.5, 2, 3 + extra, 2);
   }
 
   // Behind! — distant, fleet 3
   if (w >= 4) {
-    addRing(new THREE.Vector3(0, 0, dist * 7), 6, 6, 3, 4 + extra, 3);
+    addRing(new THREE.Vector3(0, 0, dist * 4), 6, 6, 3, 4 + extra, 3);
   }
 
-  // Surround sphere — very distant, fleet 4
+  // Surround sphere — distant, fleet 4
   if (w >= 5) {
-    addSphere(new THREE.Vector3(0, 0, -dist * 5), dist * 0.35, 6 + w, 0, 1 + extra, 4);
+    addSphere(new THREE.Vector3(0, 0, -dist * 3), dist * 0.35, 6 + w, 0, 1 + extra, 4);
   }
 
   // Bacon Kings — spread further out
@@ -772,9 +772,9 @@ function update(dt) {
   const fleet0Total = enemies.filter(e => e.fleet === 0).length;
   const fleet0Alive = enemies.filter(e => e.fleet === 0 && e.alive).length;
   const fleet0Ratio = fleet0Total > 0 ? fleet0Alive / fleet0Total : 0;
-  // Reinforcement fleets approach faster as main fleet is destroyed
-  // At 100% alive: very slow (0.002). At 0% alive: fast (0.02)
-  const reinforceSpeed = 0.002 + (1 - fleet0Ratio) * 0.018;
+  // Reinforcement speed: constant units/frame, not lerp — so distance doesn't matter
+  // Slow when main fleet is full, fast when main fleet is mostly dead
+  const reinforceVel = 0.05 + (1 - fleet0Ratio) * 0.35;
 
   // Formation tracks player — stay at a visible combat distance ahead
   const playerSpeed = shipVel.length();
@@ -792,10 +792,12 @@ function update(dt) {
       const myTarget = interceptPoint.clone().add(e.origOffset);
       const toTarget = myTarget.clone().sub(e.homePos);
       const homeDist = toTarget.length();
-      // Fleet 0 closes in normally; other fleets use reinforcement speed
-      const approachSpeed = e.fleet === 0 ? 0.012 : reinforceSpeed;
-      if (homeDist > 12) {
-        e.homePos.lerp(myTarget, approachSpeed);
+      // Fleet 0 closes in via lerp; reinforcements move at constant speed
+      if (e.fleet === 0) {
+        e.homePos.lerp(myTarget, 0.012);
+      } else {
+        const dir = toTarget.normalize().multiplyScalar(Math.min(reinforceVel, homeDist));
+        e.homePos.add(dir);
       }
 
       // Gentle repel from nearby pigs — much softer to avoid jitter

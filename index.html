@@ -15,6 +15,10 @@
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
     background: radial-gradient(ellipse at 50% 0%, #1a1a3a 0%, #0a0a1a 70%);
   }
+  #pigCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+    pointer-events: none;
+  }
   .star {
     position: absolute; background: #fff; border-radius: 50%;
     animation: twinkle var(--dur) ease-in-out infinite alternate;
@@ -73,6 +77,7 @@
 </head>
 <body>
 <div class="stars" id="stars"></div>
+<canvas id="pigCanvas"></canvas>
 <div class="content">
   <div class="pig-parade">🐷 🐷 🐷 🐷 🐷</div>
   <h1>PIG GALAGA</h1>
@@ -107,6 +112,7 @@
   </div>
 </div>
 
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }</script>
 <script>
 // Sprinkle random stars
 const starsEl = document.getElementById('stars');
@@ -121,6 +127,139 @@ for (let i = 0; i < 120; i++) {
   s.style.setProperty('--dur', (1 + Math.random() * 3) + 's');
   starsEl.appendChild(s);
 }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const canvas = document.getElementById('pigCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 12);
+
+scene.add(new THREE.AmbientLight(0x8888cc, 0.6));
+const dl = new THREE.DirectionalLight(0xffeedd, 1.2);
+dl.position.set(3, 5, 8); scene.add(dl);
+scene.add(new THREE.PointLight(0xff69b4, 0.5, 30));
+
+const PIG_COLORS = [
+  { body: 0xffb6c1, snout: 0xff8fa3, ear: 0xff69b4 },
+  { body: 0xf8a4b8, snout: 0xe8758a, ear: 0xe05580 },
+  { body: 0xe89090, snout: 0xd06060, ear: 0xc04040 },
+  { body: 0xd4a0a0, snout: 0xc07070, ear: 0xa05050 },
+  { body: 0xffd700, snout: 0xffaa00, ear: 0xff8c00 },
+];
+
+function createPig(type, scale) {
+  const g = new THREE.Group();
+  const c = PIG_COLORS[type];
+  const bm = new THREE.MeshStandardMaterial({ color: c.body, roughness: 0.6 });
+  const sm = new THREE.MeshStandardMaterial({ color: c.snout, roughness: 0.5 });
+  const em = new THREE.MeshStandardMaterial({ color: c.ear, roughness: 0.6 });
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 10), bm);
+  body.scale.set(1, 0.85, 0.9); g.add(body);
+  const sn = new THREE.Mesh(new THREE.SphereGeometry(0.4, 10, 8), sm);
+  sn.position.set(0, -0.1, 0.75); sn.scale.set(1, 0.8, 0.6); g.add(sn);
+  const nm = new THREE.MeshStandardMaterial({ color: 0x333333 });
+  const n1 = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), nm);
+  n1.position.set(-0.12, -0.1, 1.0); g.add(n1);
+  const n2 = n1.clone(); n2.position.x = 0.12; g.add(n2);
+  const ew = new THREE.MeshStandardMaterial({ color: 0xffffff });
+  const ep = new THREE.MeshStandardMaterial({ color: 0x222222 });
+  const e1 = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), ew);
+  e1.position.set(-0.3, 0.2, 0.7); g.add(e1);
+  const e2 = e1.clone(); e2.position.x = 0.3; g.add(e2);
+  const p1 = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 4), ep);
+  p1.position.set(-0.3, 0.15, 0.83); g.add(p1);
+  const p2 = p1.clone(); p2.position.x = 0.3; g.add(p2);
+  const ear1 = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 4), em);
+  ear1.position.set(-0.55, 0.6, 0.1); ear1.scale.set(0.5, 1, 0.4); ear1.rotation.z = 0.3; g.add(ear1);
+  const ear2 = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 4), em);
+  ear2.position.set(0.55, 0.6, 0.1); ear2.scale.set(0.5, 1, 0.4); ear2.rotation.z = -0.3; g.add(ear2);
+  const brm = new THREE.MeshStandardMaterial({ color: 0x333333 });
+  const br1 = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.04, 0.04), brm);
+  br1.position.set(-0.3, 0.38, 0.78); br1.rotation.z = -0.3; g.add(br1);
+  const br2 = br1.clone(); br2.position.x = 0.3; br2.rotation.z = 0.3; g.add(br2);
+  if (type === 1) {
+    const bw = new THREE.MeshStandardMaterial({ color: 0xff1493 });
+    const b1 = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.3, 4), bw); b1.position.set(-0.45, 0.8, 0.1); b1.rotation.z = 0.5; g.add(b1);
+    const b2 = b1.clone(); b2.position.set(-0.25, 0.85, 0.1); b2.rotation.z = -0.5; g.add(b2);
+  }
+  if (type === 2) {
+    const hm = new THREE.MeshStandardMaterial({ color: 0x222222 });
+    const hb = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.07, 12), hm);
+    hb.position.set(0, 0.78, 0.1); g.add(hb);
+    const ht = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.4, 12), hm);
+    ht.position.set(0, 1.05, 0.1); g.add(ht);
+  }
+  if (type === 3) {
+    const gm = new THREE.MeshStandardMaterial({ color: 0xffd700, wireframe: true });
+    const l1 = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.02, 6, 12), gm); l1.position.set(-0.3, 0.2, 0.78); g.add(l1);
+    const l2 = l1.clone(); l2.position.x = 0.3; g.add(l2);
+    const br3 = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.18, 4), gm);
+    br3.position.set(0, 0.2, 0.84); br3.rotation.z = Math.PI / 2; g.add(br3);
+  }
+  if (type === 4) {
+    const cm = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.7, roughness: 0.2 });
+    const cb = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.5, 0.15, 12), cm);
+    cb.position.set(0, 0.82, 0.1); g.add(cb);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const pt = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.3, 4), cm);
+      pt.position.set(Math.sin(a) * 0.35, 1.1, Math.cos(a) * 0.35 + 0.1); g.add(pt);
+    }
+    const jm = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5 });
+    const j = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), jm); j.position.set(0, 0.95, 0.5); g.add(j);
+  }
+  g.scale.setScalar(scale);
+  return g;
+}
+
+// Spawn pigs with random orbits
+const pigs = [];
+for (let i = 0; i < 7; i++) {
+  const type = i < 5 ? i : Math.floor(Math.random() * 4);
+  const pig = createPig(type, 0.35 + Math.random() * 0.25);
+  const angle = (i / 7) * Math.PI * 2;
+  const radius = 4 + Math.random() * 6;
+  pig.userData = {
+    angle, radius,
+    speed: 0.15 + Math.random() * 0.2,
+    yBase: (Math.random() - 0.5) * 6,
+    yBob: 0.5 + Math.random() * 1.5,
+    yPhase: Math.random() * Math.PI * 2,
+    tumbleX: (Math.random() - 0.5) * 0.8,
+    tumbleY: 0.3 + Math.random() * 0.5,
+  };
+  scene.add(pig);
+  pigs.push(pig);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+function animate(t) {
+  requestAnimationFrame(animate);
+  const s = t * 0.001;
+  for (const pig of pigs) {
+    const d = pig.userData;
+    d.angle += d.speed * 0.016;
+    pig.position.x = Math.sin(d.angle) * d.radius;
+    pig.position.z = Math.cos(d.angle) * d.radius - 8;
+    pig.position.y = d.yBase + Math.sin(s * d.yBob + d.yPhase) * 1.5;
+    pig.rotation.x = Math.sin(s * d.tumbleX) * 0.3;
+    pig.rotation.y = d.angle + Math.PI;
+    pig.rotation.z = Math.sin(s * d.tumbleY) * 0.2;
+  }
+  renderer.render(scene, camera);
+}
+animate(0);
 </script>
 </body>
 </html>

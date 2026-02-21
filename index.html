@@ -15,7 +15,7 @@
     overflow: hidden;
     font-family: 'Courier New', monospace;
   }
-  canvas { display: block; image-rendering: pixelated; }
+  canvas { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
   #ui {
     position: absolute;
     top: 10px;
@@ -60,14 +60,15 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
 const W = 480, H = 640;
-canvas.width = W;
-canvas.height = H;
+let canvasScale = 1, canvasOffX = 0, canvasOffY = 0;
 
-// Scale canvas to fit viewport
+// Canvas fills viewport; game area is centered within it
 function resize() {
-  const scale = Math.min(window.innerWidth / W, window.innerHeight / H);
-  canvas.style.width = W * scale + 'px';
-  canvas.style.height = H * scale + 'px';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvasScale = Math.min(canvas.width / W, canvas.height / H);
+  canvasOffX = (canvas.width - W * canvasScale) / 2;
+  canvasOffY = (canvas.height - H * canvasScale) / 2;
 }
 resize();
 window.addEventListener('resize', resize);
@@ -257,24 +258,24 @@ window.addEventListener('keyup', e => { keys[e.key] = false; });
 
 // Mobile touch
 let touchX = null;
+let touchY = null;
 let touchShooting = false;
 canvas.addEventListener('touchstart', e => {
   e.preventDefault();
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = W / rect.width;
-  touchX = (e.touches[0].clientX - rect.left) * scaleX;
+  touchX = (e.touches[0].clientX - canvasOffX) / canvasScale;
+  touchY = (e.touches[0].clientY - canvasOffY) / canvasScale;
   touchShooting = true;
   if (!gameStarted) gameStarted = true;
   if (gameOver) restartGame();
 });
 canvas.addEventListener('touchmove', e => {
   e.preventDefault();
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = W / rect.width;
-  touchX = (e.touches[0].clientX - rect.left) * scaleX;
+  touchX = (e.touches[0].clientX - canvasOffX) / canvasScale;
+  touchY = (e.touches[0].clientY - canvasOffY) / canvasScale;
 });
 canvas.addEventListener('touchend', e => {
   touchX = null;
+  touchY = null;
   touchShooting = false;
 });
 
@@ -290,11 +291,11 @@ document.getElementById('bombBtn').addEventListener('mousedown', e => {
   setTimeout(() => { keys['b'] = false; }, 100);
 });
 
-// ─── Stars ───
-for (let i = 0; i < 80; i++) {
+// ─── Stars (fill full viewport) ───
+for (let i = 0; i < 200; i++) {
   stars.push({
-    x: Math.random() * W,
-    y: Math.random() * H,
+    x: Math.random() * 2000 - 500,
+    y: Math.random() * 1500 - 200,
     speed: 0.3 + Math.random() * 1.5,
     size: 0.5 + Math.random() * 1.5,
     brightness: 0.3 + Math.random() * 0.7
@@ -644,9 +645,15 @@ function update() {
 
   // Touch input
   if (touchX !== null) {
-    const diff = touchX - player.x;
-    if (Math.abs(diff) > 3) {
-      player.x += Math.sign(diff) * Math.min(Math.abs(diff) * 0.15, player.speed);
+    const diffX = touchX - player.x;
+    if (Math.abs(diffX) > 3) {
+      player.x += Math.sign(diffX) * Math.min(Math.abs(diffX) * 0.15, player.speed);
+    }
+  }
+  if (touchY !== null) {
+    const diffY = touchY - player.y;
+    if (Math.abs(diffY) > 3) {
+      player.y += Math.sign(diffY) * Math.min(Math.abs(diffY) * 0.12, player.speed);
     }
   }
 
@@ -920,7 +927,7 @@ function update() {
   // Stars
   stars.forEach(s => {
     s.y += s.speed;
-    if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
+    if (s.y > 1500) { s.y = -200; s.x = Math.random() * 2000 - 500; }
   });
 
   // Shake
@@ -964,7 +971,23 @@ function playerHit() {
 
 // ─── Draw ───
 function draw() {
+  // Clear full canvas
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Stars across full viewport (no transform)
+  const parallaxX = (player.x - W / 2) * 0.05;
+  stars.forEach(s => {
+    ctx.globalAlpha = s.brightness;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(s.x - parallaxX * s.speed, s.y, s.size, s.size);
+  });
+  ctx.globalAlpha = 1;
+
+  // Apply game area transform
   ctx.save();
+  ctx.translate(canvasOffX, canvasOffY);
+  ctx.scale(canvasScale, canvasScale);
 
   // Screen shake
   if (shakeTimer > 0) {
@@ -973,19 +996,6 @@ function draw() {
       (Math.random() - 0.5) * shakeTimer * 0.8
     );
   }
-
-  // Background
-  ctx.fillStyle = '#0a0a1a';
-  ctx.fillRect(0, 0, W, H);
-
-  // Stars (parallax based on player position)
-  const parallaxX = (player.x - W / 2) * 0.05;
-  stars.forEach(s => {
-    ctx.globalAlpha = s.brightness;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(s.x - parallaxX * s.speed, s.y, s.size, s.size);
-  });
-  ctx.globalAlpha = 1;
 
   if (!gameStarted) {
     drawTitleScreen();

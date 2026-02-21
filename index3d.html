@@ -468,11 +468,12 @@ window.addEventListener('keydown', e => { keys[e.key] = true; e.preventDefault()
 window.addEventListener('keyup', e => { keys[e.key] = false; });
 
 // Touch
-let touchX = null, touchShooting = false;
+let touchX = null, touchY = null, touchShooting = false;
 renderer.domElement.addEventListener('touchstart', e => {
   e.preventDefault();
   const rect = renderer.domElement.getBoundingClientRect();
   touchX = ((e.touches[0].clientX - rect.left) / rect.width - 0.5) * FIELD_W;
+  touchY = (e.touches[0].clientY - rect.top) / rect.height;
   touchShooting = true;
   if (!gameStarted) startGame();
   if (gameOver) restartGame();
@@ -481,8 +482,9 @@ renderer.domElement.addEventListener('touchmove', e => {
   e.preventDefault();
   const rect = renderer.domElement.getBoundingClientRect();
   touchX = ((e.touches[0].clientX - rect.left) / rect.width - 0.5) * FIELD_W;
+  touchY = (e.touches[0].clientY - rect.top) / rect.height;
 });
-renderer.domElement.addEventListener('touchend', () => { touchX = null; touchShooting = false; });
+renderer.domElement.addEventListener('touchend', () => { touchX = null; touchY = null; touchShooting = false; });
 document.getElementById('bombBtn').addEventListener('touchstart', e => {
   e.preventDefault(); e.stopPropagation();
   keys['b'] = true;
@@ -611,6 +613,12 @@ function update() {
   if (touchX !== null) {
     const diff = touchX - playerObj.x;
     if (Math.abs(diff) > 0.2) playerObj.x += Math.sign(diff) * Math.min(Math.abs(diff) * 0.12, playerObj.speed);
+  }
+  if (touchY !== null) {
+    // Map touch Y (0=top, 1=bottom) to Z range (2=forward, 14=back)
+    const targetZ = 2 + touchY * 12;
+    const diffZ = targetZ - playerObj.z;
+    if (Math.abs(diffZ) > 0.2) playerObj.z += Math.sign(diffZ) * Math.min(Math.abs(diffZ) * 0.1, playerObj.speed);
   }
   playerObj.x = Math.max(-FIELD_W / 2, Math.min(FIELD_W / 2, playerObj.x));
   playerObj.z = Math.max(2, Math.min(14, playerObj.z));

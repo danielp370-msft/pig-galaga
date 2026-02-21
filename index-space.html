@@ -79,7 +79,7 @@
 <div id="overlay">
   <h1>PIG GALAGA: SPACE</h1>
   <h2>Full 3D Pig Hunt!</h2>
-  <div class="info">Mouse to aim · WASD to fly · Q/E up/down</div>
+  <div class="info">Mouse to aim & fly · WASD extra thrust · Q/E up/down</div>
   <div class="info">SPACE to shoot · B to bomb</div>
   <div class="info">Touch: drag to aim &amp; move · double-tap to bomb</div>
   <div class="start" id="startBtn">Click to Start</div>
@@ -602,14 +602,30 @@ function update(dt) {
   if (keys['KeyQ'] || keys['ShiftLeft'] || keys['ShiftRight']) accel.add(up.clone().multiplyScalar(-thrust * 0.6));
   if (keys['KeyE'] || keys['ControlLeft']) accel.add(up.clone().multiplyScalar(thrust * 0.6));
 
+  // Auto-thrust toward crosshair: further from center = faster
+  const aimDist = Math.sqrt(mouseX * mouseX + mouseY * mouseY);
+  const autoThrust = Math.min(aimDist, 1.5) * 0.012;
+  if (autoThrust > 0.002) {
+    accel.add(fwd.clone().multiplyScalar(autoThrust));
+  }
+
   // Touch movement — full directional
   if (touchMoveId !== null) {
     const cx = window.innerWidth * 0.25;
     const cy = window.innerHeight * 0.5;
     const dx = (touchMoveX - cx) / (window.innerWidth * 0.25);
     const dy = (touchMoveY - cy) / (window.innerHeight * 0.25);
-    accel.add(fwd.clone().multiplyScalar(thrust * -dy));  // up=forward, down=reverse
+    accel.add(fwd.clone().multiplyScalar(thrust * -dy));
     accel.add(right.clone().multiplyScalar(thrust * 0.6 * dx));
+  }
+  // Touch aim auto-thrust (right side)
+  if (touchAimId !== null) {
+    const aDist = Math.sqrt(
+      (touchAimX - window.innerWidth * 0.75) ** 2 +
+      (touchAimY - window.innerHeight * 0.5) ** 2
+    ) / (window.innerWidth * 0.25);
+    const tAutoThrust = Math.min(aDist, 1.5) * 0.012;
+    if (tAutoThrust > 0.002) accel.add(fwd.clone().multiplyScalar(tAutoThrust));
   }
 
   shipVel.add(accel);

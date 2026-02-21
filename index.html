@@ -561,9 +561,9 @@ function spawnWave(waveNum) {
       enemies.push({
         x: 60 + c * 42,
         y: -40 - r * 45,  // start offscreen
-        targetY: 60 + r * 45,
+        targetY: 30 + r * 40,
         homeX: 60 + c * 42,
-        homeY: 60 + r * 45,
+        homeY: 30 + r * 40,
         size,
         type,
         hp: hp + Math.floor(waveNum / 3),
@@ -586,9 +586,9 @@ function spawnWave(waveNum) {
     enemies.push({
       x: 60 + bkCol * 42,
       y: -40 - rows * 45,
-      targetY: 35,
+      targetY: 15,
       homeX: 60 + bkCol * 42,
-      homeY: 35,
+      homeY: 15,
       size: 30,
       type: 4,
       hp: 6 + Math.floor(waveNum / 2),
@@ -633,10 +633,14 @@ function update() {
   // Player movement
   const moveLeft = keys['ArrowLeft'] || keys['a'];
   const moveRight = keys['ArrowRight'] || keys['d'];
-  const shooting = keys[' '] || keys['ArrowUp'] || keys['z'];
+  const moveUp = keys['ArrowUp'] || keys['w'];
+  const moveDown = keys['ArrowDown'] || keys['s'];
+  const shooting = keys[' '] || keys['z'];
 
   if (moveLeft) player.x -= player.speed;
   if (moveRight) player.x += player.speed;
+  if (moveUp) player.y -= player.speed;
+  if (moveDown) player.y += player.speed;
 
   // Touch input
   if (touchX !== null) {
@@ -647,6 +651,7 @@ function update() {
   }
 
   player.x = Math.max(20, Math.min(W - 20, player.x));
+  player.y = Math.max(H * 0.5, Math.min(H - 30, player.y));
 
   // Shooting
   if (player.shootCooldown > 0) player.shootCooldown--;
@@ -1189,9 +1194,9 @@ function drawTitleScreen() {
 
   ctx.fillStyle = '#888';
   ctx.font = '13px monospace';
-  ctx.fillText('← → or A/D to move', W / 2, H * 0.80);
-  ctx.fillText('SPACE or Z to shoot', W / 2, H * 0.85);
-  ctx.fillText('B for electric bomb (5/wave)', W / 2, H * 0.89);
+  ctx.fillText('← → ↑ ↓ or WASD to move', W / 2, H * 0.80);
+  ctx.fillText('SPACE or Z to shoot', W / 2, H * 0.84);
+  ctx.fillText('B for electric bomb (5/wave)', W / 2, H * 0.88);
   ctx.fillText('Mobile: touch to play', W / 2, H * 0.90);
 }
 

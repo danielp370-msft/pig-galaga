@@ -66,6 +66,10 @@
     border: 2px solid rgba(68,170,255,0.5); background: rgba(0,10,30,0.6);
     box-shadow: 0 0 12px rgba(68,170,255,0.2) inset;
   }
+  #proxAlert {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 8;
+  }
 </style>
 </head>
 <body>
@@ -92,6 +96,7 @@
 <button id="bombBtn">💣</button>
 <div id="shipHpBar"><div class="bar"><div class="fill" id="hpFill" style="width:100%"></div></div></div>
 <canvas id="radar" width="140" height="140"></canvas>
+<canvas id="proxAlert"></canvas>
 
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
@@ -971,6 +976,7 @@ function update(dt) {
 
   // ── Radar ──
   drawRadar();
+  drawProximityAlert();
 }
 
 const radarCanvas = document.getElementById('radar');
@@ -1057,7 +1063,123 @@ function drawRadar() {
   ctx.fillText('RADAR', RADAR_R, 136);
 }
 
-function spawnBullet(offset, isBacon) {
+// ── Proximity Alert ──
+const proxCanvas = document.getElementById('proxAlert');
+const proxCtx = proxCanvas.getContext('2d');
+let proxAlertLevel = 0; // 0-1 danger intensity
+
+function drawProximityAlert() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (proxCanvas.width !== w || proxCanvas.height !== h) {
+    proxCanvas.width = w; proxCanvas.height = h;
+  }
+  proxCtx.clearRect(0, 0, w, h);
+
+  const threats = [];
+  const WARN_TIME = 60; // frames of warning (~1 second)
+
+  // Check enemy bullets — predict if they'll pass near player
+  enemyBullets.forEach(b => {
+    if (b.life <= 0) return;
+    const rel = b.mesh.position.clone().sub(shipMesh.position);
+    const dist = rel.length();
+    if (dist > 30) return; // too far to care
+    // Time of closest approach: t = -dot(rel, vel) / dot(vel, vel)
+    const dot_rv = rel.dot(b.vel);
+    const dot_vv = b.vel.dot(b.vel);
+    if (dot_vv < 0.0001) return;
+    const t = -dot_rv / dot_vv;
+    if (t < 0 || t > WARN_TIME) return; // already passed or too far future
+    const closest = rel.clone().add(b.vel.clone().multiplyScalar(t));
+    const minDist = closest.length();
+    if (minDist < 3) { // will pass within 3 units
+      const urgency = Math.max(0, 1 - t / WARN_TIME) * Math.max(0, 1 - minDist / 3);
+      threats.push({ pos: b.mesh.position.clone(), urgency, type: 'bullet' });
+    }
+  });
+
+  // Check diving pigs
+  enemies.forEach(e => {
+    if (!e.alive) return;
+    const dist = e.mesh.position.distanceTo(shipMesh.position);
+    if (dist < 8 && e.diving) {
+      const urgency = Math.max(0, 1 - dist / 8);
+      threats.push({ pos: e.mesh.position.clone(), urgency: urgency * 0.8, type: 'pig' });
+    } else if (dist < 5) {
+      threats.push({ pos: e.mesh.position.clone(), urgency: Math.max(0, 1 - dist / 5) * 0.6, type: 'pig' });
+    }
+  });
+
+  if (threats.length === 0) { proxAlertLevel *= 0.9; return; }
+
+  // Overall danger level
+  const maxUrgency = Math.max(...threats.map(t => t.urgency));
+  proxAlertLevel = proxAlertLevel * 0.7 + maxUrgency * 0.3;
+
+  // Red vignette based on danger
+  if (proxAlertLevel > 0.05) {
+    const pulse = 0.5 + 0.5 * Math.sin(frame * 0.3);
+    const alpha = proxAlertLevel * 0.35 * (0.6 + pulse * 0.4);
+    const grad = proxCtx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.min(w, h) * 0.7);
+    grad.addColorStop(0, 'rgba(255,0,0,0)');
+    grad.addColorStop(1, `rgba(255,30,30,${alpha})`);
+    proxCtx.fillStyle = grad;
+    proxCtx.fillRect(0, 0, w, h);
+  }
+
+  // Draw directional arrows on screen edges pointing toward threats
+  const cx = w / 2, cy = h / 2;
+  threats.forEach(t => {
+    if (t.urgency < 0.1) return;
+    // Project threat direction to screen space via camera
+    const screenPos = t.pos.clone().project(camera);
+    const sx = (screenPos.x * 0.5 + 0.5) * w;
+    const sy = (-screenPos.y * 0.5 + 0.5) * h;
+    const behind = screenPos.z > 1;
+
+    // Direction from center to threat on screen
+    let dx = behind ? -(sx - cx) : sx - cx;
+    let dy = behind ? -(sy - cy) : sy - cy;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1) return;
+    dx /= len; dy /= len;
+
+    // Place arrow at screen edge
+    const margin = 40;
+    const edgeX = cx + dx * (cx - margin);
+    const edgeY = cy + dy * (cy - margin);
+
+    const pulse = 0.6 + 0.4 * Math.sin(frame * 0.25);
+    const alpha = t.urgency * pulse;
+    const size = 10 + t.urgency * 8;
+
+    proxCtx.save();
+    proxCtx.translate(edgeX, edgeY);
+    proxCtx.rotate(Math.atan2(dy, dx));
+
+    // Arrow
+    proxCtx.fillStyle = t.type === 'bullet' ? `rgba(255,80,80,${alpha})` : `rgba(255,160,50,${alpha})`;
+    proxCtx.strokeStyle = t.type === 'bullet' ? `rgba(255,120,120,${alpha * 0.8})` : `rgba(255,200,80,${alpha * 0.8})`;
+    proxCtx.lineWidth = 2;
+    proxCtx.beginPath();
+    proxCtx.moveTo(size, 0);
+    proxCtx.lineTo(-size * 0.5, -size * 0.6);
+    proxCtx.lineTo(-size * 0.2, 0);
+    proxCtx.lineTo(-size * 0.5, size * 0.6);
+    proxCtx.closePath();
+    proxCtx.fill();
+    proxCtx.stroke();
+
+    // ⚠ symbol for high urgency
+    if (t.urgency > 0.6) {
+      proxCtx.fillStyle = `rgba(255,255,100,${alpha})`;
+      proxCtx.font = `bold ${12 + t.urgency * 4}px sans-serif`;
+      proxCtx.textAlign = 'center';
+      proxCtx.fillText('⚠', -size * 0.8, 5);
+    }
+    proxCtx.restore();
+  });
+}
   const mat = isBacon ? baconMat.clone() : bMat.clone();
   const mesh = new THREE.Mesh(bGeo, mat);
   const dir = fwd.clone();

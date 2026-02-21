@@ -636,6 +636,10 @@ function update(dt) {
     accel.add(fwd.clone().multiplyScalar(autoThrust));
   }
 
+  // Lateral drift when turning — ship slides sideways so you dodge bullets
+  if (Math.abs(mouseX) > 0.05) accel.add(right.clone().multiplyScalar(-mouseX * thrust * 0.5));
+  if (Math.abs(mouseY) > 0.05) accel.add(up.clone().multiplyScalar(mouseY * thrust * 0.4));
+
   // Touch movement — full directional (left side stick)
   if (touchMoveId !== null) {
     const cx = window.innerWidth * 0.25;

@@ -611,31 +611,23 @@ function update(dt) {
   if (keys['KeyQ'] || keys['ShiftLeft'] || keys['ShiftRight']) accel.add(up.clone().multiplyScalar(-thrust * 0.6));
   if (keys['KeyE'] || keys['ControlLeft']) accel.add(up.clone().multiplyScalar(thrust * 0.6));
 
-  // Auto-thrust toward crosshair: further from center = faster
+  // Auto-thrust toward crosshair: gentle drift, mainly for mouse
   const aimDist = Math.sqrt(mouseX * mouseX + mouseY * mouseY);
-  const autoThrust = Math.min(aimDist, 1.5) * 0.007;
-  if (autoThrust > 0.002) {
+  const autoThrust = Math.min(aimDist, 1.5) * 0.003;
+  if (autoThrust > 0.001) {
     accel.add(fwd.clone().multiplyScalar(autoThrust));
   }
 
-  // Touch movement — full directional
+  // Touch movement — full directional (left side stick)
   if (touchMoveId !== null) {
     const cx = window.innerWidth * 0.25;
     const cy = window.innerHeight * 0.5;
     const dx = (touchMoveX - cx) / (window.innerWidth * 0.25);
     const dy = (touchMoveY - cy) / (window.innerHeight * 0.25);
-    accel.add(fwd.clone().multiplyScalar(thrust * -dy));
-    accel.add(right.clone().multiplyScalar(thrust * 0.6 * dx));
+    accel.add(fwd.clone().multiplyScalar(thrust * 0.5 * -dy));
+    accel.add(right.clone().multiplyScalar(thrust * 0.4 * dx));
   }
-  // Touch aim auto-thrust (right side)
-  if (touchAimId !== null) {
-    const aDist = Math.sqrt(
-      (touchAimX - window.innerWidth * 0.75) ** 2 +
-      (touchAimY - window.innerHeight * 0.5) ** 2
-    ) / (window.innerWidth * 0.25);
-    const tAutoThrust = Math.min(aDist, 1.5) * 0.007;
-    if (tAutoThrust > 0.002) accel.add(fwd.clone().multiplyScalar(tAutoThrust));
-  }
+  // Touch aim — rotation only, no thrust
 
   shipVel.add(accel);
   shipVel.multiplyScalar(0.93); // higher drag = slower top speed

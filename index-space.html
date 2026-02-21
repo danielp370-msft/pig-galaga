@@ -749,11 +749,15 @@ function update(dt) {
       // Smooth orbit around home position
       e.orbitAngle += e.orbitSpeed;
       const orbR = 2;
-      e.mesh.position.lerp(new THREE.Vector3(
+      const orbitTarget = new THREE.Vector3(
         e.homePos.x + Math.sin(e.orbitAngle) * orbR,
         e.homePos.y + Math.sin(e.orbitAngle * 0.7) * orbR * 0.5,
         e.homePos.z + Math.cos(e.orbitAngle) * orbR
-      ), 0.08);
+      );
+      // Return gently after a dive, normal speed otherwise
+      const returnDist = e.mesh.position.distanceTo(orbitTarget);
+      const lerpSpeed = returnDist > 10 ? 0.015 : 0.08;
+      e.mesh.position.lerp(orbitTarget, lerpSpeed);
     }
 
     // Face toward player

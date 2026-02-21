@@ -748,14 +748,9 @@ function update(dt) {
   });
 
   // ── Update enemies ──
-  // Calculate how depleted fleet 0 (main group) is
-  const fleet0Total = enemies.filter(e => e.fleet === 0).length;
-  const fleet0Alive = enemies.filter(e => e.fleet === 0 && e.alive).length;
-  const fleet0Ratio = fleet0Total > 0 ? fleet0Alive / fleet0Total : 0;
-  // Time since wave started (in seconds)
-  const waveElapsed = (frame - waveStartFrame) / 60;
-  // Staggered release times per fleet (seconds)
-  const fleetReleaseTimes = [0, 10, 12, 15, 15];
+  // Check if any alive pigs are close to the player
+  const COMBAT_RANGE = 25;
+  const anyClose = enemies.some(e => e.alive && e.mesh.position.distanceTo(shipMesh.position) < COMBAT_RANGE);
 
   // Formation tracks player — stay at a visible combat distance ahead
   const playerSpeed = shipVel.length();
@@ -774,23 +769,17 @@ function update(dt) {
       const toTarget = myTarget.clone().sub(e.homePos);
       const homeDist = toTarget.length();
 
-      if (e.fleet === 0) {
-        // Main fleet: close in normally
-        if (homeDist > 12) e.homePos.lerp(myTarget, 0.012);
-      } else {
-        // Reinforcements: released by timer OR when fleet 0 is < 30% alive
-        const releaseTime = fleetReleaseTimes[e.fleet] || 10;
-        const released = waveElapsed >= releaseTime || fleet0Ratio < 0.3;
-        if (released) {
-          // Once released, just head straight for the combat zone
-          e.homePos.lerp(myTarget, 0.025);
-          // If still far, also add constant speed push
+      if (e.fleet === 0 || !anyClose) {
+        // Main fleet always approaches; others come in when nobody is close
+        if (homeDist > 5) {
+          e.homePos.lerp(myTarget, 0.015);
+          // Constant speed push when far so they don't crawl
           if (homeDist > 15) {
-            const dir = toTarget.clone().normalize().multiplyScalar(0.5);
-            e.homePos.add(dir);
+            e.homePos.add(toTarget.clone().normalize().multiplyScalar(0.5));
           }
         }
       }
+      // Otherwise this fleet holds position until combat zone is clear
 
       // Gentle repel from nearby pigs — much softer to avoid jitter
       enemies.forEach(other => {

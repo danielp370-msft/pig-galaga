@@ -524,7 +524,8 @@ function addEnemy(pos, type, hp) {
     mesh, type, hp, maxHp: hp, points, scale, homePos, origOffset,
     alive: true, diving: false, diveDir: new THREE.Vector3(),
     diveTime: 0, frame: Math.random() * 100, orbitAngle: Math.random() * Math.PI * 2,
-    orbitSpeed: 0.002 + Math.random() * 0.003
+    orbitSpeed: 0.002 + Math.random() * 0.003,
+    prevPos: pos.clone()
   });
 }
 
@@ -636,10 +637,6 @@ function update(dt) {
     accel.add(fwd.clone().multiplyScalar(autoThrust));
   }
 
-  // Lateral drift when turning — ship slides sideways so you dodge bullets
-  if (Math.abs(mouseX) > 0.05) accel.add(right.clone().multiplyScalar(-mouseX * thrust * 0.5));
-  if (Math.abs(mouseY) > 0.05) accel.add(up.clone().multiplyScalar(mouseY * thrust * 0.4));
-
   // Touch movement — full directional (left side stick)
   if (touchMoveId !== null) {
     const cx = window.innerWidth * 0.25;
@@ -747,6 +744,9 @@ function update(dt) {
   enemies.forEach(e => {
     if (!e.alive) return;
     e.frame++;
+    // Track velocity as position delta
+    const pigVel = e.mesh.position.clone().sub(e.prevPos);
+    e.prevPos.copy(e.mesh.position);
 
     // Chase: each pig targets intercept point offset by its formation position
     if (!e.diving) {
@@ -809,14 +809,16 @@ function update(dt) {
       }
     }
 
-    // Shooting toward player — more aggressive
+    // Shooting toward player — bullets inherit pig's velocity
     const distToPlayer = e.mesh.position.distanceTo(shipPos);
     if (distToPlayer < 60 && Math.random() < 0.002 + wave * 0.001) {
-      const dir = shipPos.clone().sub(e.mesh.position).normalize().multiplyScalar(0.3 + wave * 0.02);
+      const bulletSpeed = 0.3 + wave * 0.02;
+      const aimDir = shipPos.clone().sub(e.mesh.position).normalize().multiplyScalar(bulletSpeed);
+      const vel = aimDir.add(pigVel);
       const mesh = new THREE.Mesh(eBulletGeo, eBulletMat.clone());
       mesh.position.copy(e.mesh.position);
       scene.add(mesh);
-      enemyBullets.push({ mesh, vel: dir, life: 200 });
+      enemyBullets.push({ mesh, vel, life: 200 });
     }
   });
 

@@ -783,6 +783,18 @@ function update() {
     }
   }
 
+  // Bullet-vs-bullet collision
+  bullets.forEach(b => {
+    enemyBullets.forEach(eb => {
+      const dx = b.x - eb.x, dy = b.y - eb.y;
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+        spawnParticles(b.x, b.y, '#88ccff', 4);
+        b.y = -999;
+        eb.y = 9999;
+      }
+    });
+  });
+
   // Bullet-enemy collision
   bullets.forEach(b => {
     enemies.forEach(e => {

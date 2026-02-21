@@ -845,6 +845,19 @@ function update() {
     }
   }
 
+  // Bullet-vs-bullet collision
+  bulletObjs.forEach(b => {
+    enemyBulletObjs.forEach(eb => {
+      const dx = b.mesh.position.x - eb.mesh.position.x;
+      const dz = b.mesh.position.z - eb.mesh.position.z;
+      if (Math.abs(dx) < 0.5 && Math.abs(dz) < 0.5) {
+        spawnParticles3D(b.mesh.position.x, 1, b.mesh.position.z, 0x88ccff, 4);
+        b.mesh.position.z = -999;
+        eb.mesh.position.z = 999;
+      }
+    });
+  });
+
   // Bullet-enemy collision
   bulletObjs.forEach(b => {
     enemyObjs.forEach(e => {

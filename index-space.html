@@ -293,6 +293,7 @@ let gameOver = false, gameStarted = false;
 let invTimer = 0, baconTimer = 0, bombCooldown = 0, shootCooldown = 0;
 let shakeTimer = 0, shipHp = 3, maxShipHp = 3;
 let frame = 0;
+let waveStartFrame = 0;
 
 // Ship state
 const shipPos = new THREE.Vector3(0, 0, 0);
@@ -469,28 +470,28 @@ function spawnWave(w) {
   // Forward cluster — main group, fleet 0
   addRing(new THREE.Vector3(0, 0, -dist), 5 + w * 0.5, 8 + w, 0, 1 + extra, 0);
 
-  // Side rings — visible in distance, fleet 1
+  // Side rings — far out, fleet 1 (arrives after ~10s or when fleet 0 depleted)
   if (w >= 2) {
-    const sideDist = dist * 1.5;
+    const sideDist = dist * 3;
     addRing(new THREE.Vector3(-sideDist, 8, -sideDist * 0.6), 5, 6, 1, 2 + extra, 1);
     addRing(new THREE.Vector3(sideDist, -8, -sideDist * 0.6), 5, 6, 1, 2 + extra, 1);
   }
 
-  // Above/below — fleet 2
+  // Above/below — fleet 2 (arrives after ~12s)
   if (w >= 3) {
-    const vertDist = dist * 1.8;
+    const vertDist = dist * 3;
     addGrid(new THREE.Vector3(0, vertDist * 0.5, -vertDist * 0.7), 2, 4, 2.5, 2, 3 + extra, 2);
     addGrid(new THREE.Vector3(0, -vertDist * 0.5, -vertDist * 0.5), 2, 3, 2.5, 2, 3 + extra, 2);
   }
 
-  // Behind! — fleet 3
+  // Behind! — fleet 3 (arrives after ~15s)
   if (w >= 4) {
-    addRing(new THREE.Vector3(0, 0, dist * 2), 6, 6, 3, 4 + extra, 3);
+    addRing(new THREE.Vector3(0, 0, dist * 3.5), 6, 6, 3, 4 + extra, 3);
   }
 
-  // Surround sphere — fleet 4
+  // Surround sphere — fleet 4 (arrives after ~15s)
   if (w >= 5) {
-    addSphere(new THREE.Vector3(0, 0, -dist * 1.5), dist * 0.35, 6 + w, 0, 1 + extra, 4);
+    addSphere(new THREE.Vector3(0, 0, -dist * 3), dist * 0.35, 6 + w, 0, 1 + extra, 4);
   }
 
   // Bacon Kings — spread further out
@@ -548,6 +549,7 @@ function initGame() {
   invTimer = 240; // 4 seconds invincibility at wave start
 
   wave++;
+  waveStartFrame = frame;
   announceWave(wave);
   spawnWave(wave);
   // Compute formation offsets relative to each fleet's center of mass
@@ -746,12 +748,14 @@ function update(dt) {
   });
 
   // ── Update enemies ──
-  // Calculate how depleted fleet 0 (main group) is — drives reinforcement urgency
+  // Calculate how depleted fleet 0 (main group) is
   const fleet0Total = enemies.filter(e => e.fleet === 0).length;
   const fleet0Alive = enemies.filter(e => e.fleet === 0 && e.alive).length;
   const fleet0Ratio = fleet0Total > 0 ? fleet0Alive / fleet0Total : 0;
-  // Reinforcement speed: ramps up as main fleet dies
-  const reinforceVel = 0.15 + (1 - fleet0Ratio) * 0.5;
+  // Time since wave started (in seconds)
+  const waveElapsed = (frame - waveStartFrame) / 60;
+  // Staggered release times per fleet (seconds)
+  const fleetReleaseTimes = [0, 10, 12, 15, 15];
 
   // Formation tracks player — stay at a visible combat distance ahead
   const playerSpeed = shipVel.length();
@@ -769,12 +773,21 @@ function update(dt) {
       const myTarget = interceptPoint.clone().add(e.origOffset);
       const toTarget = myTarget.clone().sub(e.homePos);
       const homeDist = toTarget.length();
-      // Fleet 0 holds distance; reinforcements always close in
+
       if (e.fleet === 0) {
+        // Main fleet: close in normally
         if (homeDist > 12) e.homePos.lerp(myTarget, 0.012);
       } else {
-        const dir = toTarget.normalize().multiplyScalar(Math.min(reinforceVel, homeDist));
-        e.homePos.add(dir);
+        // Reinforcements: released by timer OR when fleet 0 is < 30% alive
+        const releaseTime = fleetReleaseTimes[e.fleet] || 10;
+        const released = waveElapsed >= releaseTime || fleet0Ratio < 0.3;
+        if (released) {
+          // Rush in fast
+          const speed = 0.4 + (1 - fleet0Ratio) * 0.3;
+          const dir = toTarget.clone().normalize().multiplyScalar(Math.min(speed, homeDist));
+          e.homePos.add(dir);
+        }
+        // Otherwise hold position — they just sit out there visible on radar
       }
 
       // Gentle repel from nearby pigs — much softer to avoid jitter
@@ -798,9 +811,8 @@ function update(dt) {
       // Move toward orbit target — fast when far, gentle when close
       const returnDist = e.mesh.position.distanceTo(orbitTarget);
       if (returnDist > 20) {
-        // Far away: constant speed approach so we don't crawl
         const moveDir = orbitTarget.clone().sub(e.mesh.position).normalize();
-        e.mesh.position.add(moveDir.multiplyScalar(Math.min(returnDist * 0.05, reinforceVel + 0.1)));
+        e.mesh.position.add(moveDir.multiplyScalar(Math.min(returnDist * 0.05, 0.6)));
       } else {
         const lerpSpeed = returnDist > 10 ? 0.04 : 0.08;
         e.mesh.position.lerp(orbitTarget, lerpSpeed);
@@ -969,6 +981,7 @@ function update(dt) {
   // ── Wave clear ──
   if (enemies.length > 0 && enemies.every(e => !e.alive)) {
     wave++;
+    waveStartFrame = frame;
     bombs = 5;
     sfxWave();
     announceWave(wave);

@@ -780,15 +780,29 @@ function update(dt) {
         }
       }
 
-      // Gentle repel from nearby pigs
+      // Flocking — pigs attract to nearby same-type pigs, forming squads
+      const cohesion = new THREE.Vector3();
+      const separation = new THREE.Vector3();
+      let flockCount = 0;
       enemies.forEach(other => {
         if (other === e || !other.alive) return;
         const sep = e.mesh.position.clone().sub(other.mesh.position);
         const d = sep.length();
+        // Cohesion: attract to nearby same-fleet pigs
+        if (d < 12 && d > 0.1 && other.fleet === e.fleet) {
+          cohesion.add(other.mesh.position);
+          flockCount++;
+        }
+        // Separation: push away from very close pigs (any fleet)
         if (d < 3 && d > 0.1) {
-          e.mesh.position.add(sep.normalize().multiplyScalar(0.02 * (3 - d)));
+          separation.add(sep.normalize().multiplyScalar(0.03 * (3 - d)));
         }
       });
+      if (flockCount > 0) {
+        cohesion.divideScalar(flockCount).sub(e.mesh.position);
+        e.mesh.position.add(cohesion.multiplyScalar(0.008));
+      }
+      e.mesh.position.add(separation);
     }
 
     // Face toward player

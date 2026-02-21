@@ -872,7 +872,7 @@ function update(dt) {
   if (invTimer <= 0) {
     enemyBullets.forEach(b => {
       if (b.life <= 0) return;
-      if (b.mesh.position.distanceTo(shipPos) < 1.2) {
+      if (b.mesh.position.distanceTo(shipMesh.position) < 0.7) {
         b.life = 0;
         playerHit();
       }
@@ -880,7 +880,7 @@ function update(dt) {
     // Enemy body vs player
     enemies.forEach(e => {
       if (!e.alive) return;
-      if (e.mesh.position.distanceTo(shipPos) < e.scale + 1) {
+      if (e.mesh.position.distanceTo(shipMesh.position) < e.scale * 0.7 + 0.5) {
         e.alive = false;
         e.mesh.visible = false;
         spawnP(e.mesh.position, 0xff6b6b, 20);

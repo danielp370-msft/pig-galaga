@@ -267,7 +267,7 @@ function createShip() {
   const eng = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.7, 6), em);
   eng.rotation.x = Math.PI / 2; eng.position.z = 1.1; eng.name = 'engine'; g.add(eng);
 
-  g.scale.setScalar(1.8);
+  g.scale.setScalar(1.3);
   return g;
 }
 
@@ -448,7 +448,7 @@ function spawnWave(w) {
     }
   }
 
-  const dist = 30 + w * 5;
+  const dist = 20 + w * 3;
   const extra = Math.floor(w / 3);
 
   // Forward cluster
@@ -653,7 +653,7 @@ function update(dt) {
   }
 
   // Camera: chase behind ship
-  const camOffset = new THREE.Vector3(0, 3, 10);
+  const camOffset = new THREE.Vector3(0, 2.5, 8);
   camOffset.applyQuaternion(shipQuat);
   const camTarget = shipPos.clone().add(camOffset);
   camera.position.lerp(camTarget, 0.08);
@@ -718,39 +718,43 @@ function update(dt) {
   });
 
   // ── Update enemies ──
-  // Predict where player will be — but don't overshoot
+  // Formation tracks player — stay at a visible combat distance ahead
   const playerSpeed = shipVel.length();
-  const interceptPoint = shipPos.clone().add(fwd.clone().multiplyScalar(playerSpeed * 30 + 5));
+  const interceptPoint = shipPos.clone().add(fwd.clone().multiplyScalar(playerSpeed * 15 + 12));
 
   enemies.forEach(e => {
     if (!e.alive) return;
     e.frame++;
 
     // Chase: each pig targets intercept point offset by its formation position
-    const myTarget = interceptPoint.clone().add(e.origOffset);
-    const toTarget = myTarget.sub(e.homePos);
-    const homeDist = toTarget.length();
-    const chaseSpeed = 0.12 + wave * 0.015;
-    if (homeDist > 8) {
-      e.homePos.add(toTarget.normalize().multiplyScalar(Math.min(chaseSpeed, homeDist * 0.03)));
-    }
-
-    // Repel from nearby pigs to prevent clumping
-    enemies.forEach(other => {
-      if (other === e || !other.alive) return;
-      const sep = e.homePos.clone().sub(other.homePos);
-      const d = sep.length();
-      if (d < 6 && d > 0.1) {
-        e.homePos.add(sep.normalize().multiplyScalar(0.05 * (6 - d)));
+    if (!e.diving) {
+      const myTarget = interceptPoint.clone().add(e.origOffset);
+      const toTarget = myTarget.clone().sub(e.homePos);
+      const homeDist = toTarget.length();
+      // Hold formation at distance — only close in slowly
+      if (homeDist > 12) {
+        e.homePos.lerp(myTarget, 0.012);
       }
-    });
 
-    // Orbit around home position — wider orbit
-    e.orbitAngle += e.orbitSpeed;
-    const orbR = 3.5;
-    e.mesh.position.x = e.homePos.x + Math.sin(e.orbitAngle) * orbR;
-    e.mesh.position.y = e.homePos.y + Math.sin(e.orbitAngle * 0.7) * orbR * 0.6;
-    e.mesh.position.z = e.homePos.z + Math.cos(e.orbitAngle) * orbR;
+      // Gentle repel from nearby pigs — much softer to avoid jitter
+      enemies.forEach(other => {
+        if (other === e || !other.alive) return;
+        const sep = e.homePos.clone().sub(other.homePos);
+        const d = sep.length();
+        if (d < 5 && d > 0.1) {
+          e.homePos.add(sep.normalize().multiplyScalar(0.01 * (5 - d)));
+        }
+      });
+
+      // Smooth orbit around home position
+      e.orbitAngle += e.orbitSpeed;
+      const orbR = 2;
+      e.mesh.position.lerp(new THREE.Vector3(
+        e.homePos.x + Math.sin(e.orbitAngle) * orbR,
+        e.homePos.y + Math.sin(e.orbitAngle * 0.7) * orbR * 0.5,
+        e.homePos.z + Math.cos(e.orbitAngle) * orbR
+      ), 0.08);
+    }
 
     // Face toward player
     e.mesh.lookAt(shipPos);
@@ -773,10 +777,10 @@ function update(dt) {
       }
     }
 
-    // Random shooting toward player
+    // Shooting toward player — more aggressive
     const distToPlayer = e.mesh.position.distanceTo(shipPos);
-    if (distToPlayer < 80 && Math.random() < 0.0005 + wave * 0.0004) {
-      const dir = shipPos.clone().sub(e.mesh.position).normalize().multiplyScalar(0.2 + wave * 0.01);
+    if (distToPlayer < 60 && Math.random() < 0.002 + wave * 0.001) {
+      const dir = shipPos.clone().sub(e.mesh.position).normalize().multiplyScalar(0.3 + wave * 0.02);
       const mesh = new THREE.Mesh(eBulletGeo, eBulletMat.clone());
       mesh.position.copy(e.mesh.position);
       scene.add(mesh);

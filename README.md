@@ -8,20 +8,10 @@
   <img src="https://img.shields.io/badge/%F0%9F%90%B7%20PLAY%20NOW-Pig%20Galaga-ff69b4?style=for-the-badge&logoColor=white" alt="Play Pig Galaga" />
 </a>
 
-<details>
-<summary>📺 Landing Page Preview</summary>
+### 🎬 Demo
 
-<!-- GitHub renders iframes in some contexts; falls back to screenshot link -->
-<a href="https://danielp370-msft.github.io/pig-galaga/">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://danielp370-msft.github.io/pig-galaga/">
-    <img alt="Pig Galaga Landing Page — 3D pigs orbiting behind game selection cards" src="https://danielp370-msft.github.io/pig-galaga/" width="600">
-  </picture>
-</a>
-
-*Click above or the Play Now button to launch the game picker with 3D pigs floating in the background!*
-
-</details>
+<!-- TO ADD YOUR VIDEO: Edit this README on GitHub, delete this comment and the placeholder text below, then drag-drop your .mp4 file here. GitHub will auto-upload it and generate the video embed. -->
+*Video coming soon — drag-drop your MP4 here when editing on GitHub!*
 
 ## 🐖 Meet the Pig Family
 

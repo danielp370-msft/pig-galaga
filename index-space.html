@@ -717,16 +717,20 @@ function update(dt) {
   });
 
   // ── Update enemies ──
+  // Predict where player will be — target a point ahead of the player
+  const playerSpeed = shipVel.length();
+  const interceptPoint = shipPos.clone().add(fwd.clone().multiplyScalar(playerSpeed * 80 + 10));
+
   enemies.forEach(e => {
     if (!e.alive) return;
     e.frame++;
 
-    // Formation drifts toward player — the whole swarm closes in
-    const toPlayer = shipPos.clone().sub(e.homePos);
-    const homeDist = toPlayer.length();
-    if (homeDist > 15) {
-      // Slowly pull homePos toward player (closer = more threatening)
-      e.homePos.add(toPlayer.normalize().multiplyScalar(0.12 + wave * 0.015));
+    // Chase: formation tries to get AHEAD of the player
+    const toIntercept = interceptPoint.clone().sub(e.homePos);
+    const homeDist = toIntercept.length();
+    const chaseSpeed = 0.15 + wave * 0.02;
+    if (homeDist > 10) {
+      e.homePos.add(toIntercept.normalize().multiplyScalar(Math.min(chaseSpeed, homeDist * 0.05)));
     }
 
     // Orbit around home position
@@ -748,14 +752,10 @@ function update(dt) {
     // Dive attack
     if (e.diving) {
       e.diveTime++;
-      // Accelerate toward player, then coast past
-      const speed = 0.4 + wave * 0.03;
-      const diveOffset = e.diveDir.clone().multiplyScalar(speed);
-      e.mesh.position.add(diveOffset);
-      // Re-aim mid-dive for first half
-      if (e.diveTime < 60) {
-        e.diveDir.lerp(shipPos.clone().sub(e.mesh.position).normalize(), 0.03);
-      }
+      const speed = 0.5 + wave * 0.03;
+      // Continuously track player throughout dive
+      e.diveDir.lerp(shipPos.clone().sub(e.mesh.position).normalize(), 0.06);
+      e.mesh.position.add(e.diveDir.clone().multiplyScalar(speed));
       if (e.diveTime > 180) {
         e.diving = false;
       }

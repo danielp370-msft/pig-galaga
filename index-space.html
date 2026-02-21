@@ -782,12 +782,14 @@ function update(dt) {
         const releaseTime = fleetReleaseTimes[e.fleet] || 10;
         const released = waveElapsed >= releaseTime || fleet0Ratio < 0.3;
         if (released) {
-          // Rush in fast
-          const speed = 0.4 + (1 - fleet0Ratio) * 0.3;
-          const dir = toTarget.clone().normalize().multiplyScalar(Math.min(speed, homeDist));
-          e.homePos.add(dir);
+          // Once released, just head straight for the combat zone
+          e.homePos.lerp(myTarget, 0.025);
+          // If still far, also add constant speed push
+          if (homeDist > 15) {
+            const dir = toTarget.clone().normalize().multiplyScalar(0.5);
+            e.homePos.add(dir);
+          }
         }
-        // Otherwise hold position — they just sit out there visible on radar
       }
 
       // Gentle repel from nearby pigs — much softer to avoid jitter

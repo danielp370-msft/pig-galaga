@@ -762,7 +762,7 @@ function update(dt) {
       // Swarm around the player — orbit at a radius
       const swarming = e.fleet === 0 || !anyClose;
       if (swarming) {
-        const swarmRadius = 8 + e.origOffset.length() * 0.5;
+        const swarmRadius = 7 + e.origOffset.length() * 0.3;
         e.orbitAngle += e.orbitSpeed;
         // Each pig orbits at its own angle/phase around the player
         const orbitTarget = new THREE.Vector3(
@@ -780,7 +780,7 @@ function update(dt) {
         }
       }
 
-      // Flocking — pigs attract to nearby same-type pigs, forming squads
+      // Flocking — same-fleet pigs cluster tightly into squads
       const cohesion = new THREE.Vector3();
       const separation = new THREE.Vector3();
       let flockCount = 0;
@@ -788,19 +788,20 @@ function update(dt) {
         if (other === e || !other.alive) return;
         const sep = e.mesh.position.clone().sub(other.mesh.position);
         const d = sep.length();
-        // Cohesion: attract to nearby same-fleet pigs
-        if (d < 12 && d > 0.1 && other.fleet === e.fleet) {
+        // Cohesion: strongly attract to same-fleet pigs within 20 units
+        if (d < 20 && d > 0.1 && other.fleet === e.fleet) {
           cohesion.add(other.mesh.position);
           flockCount++;
         }
         // Separation: push away from very close pigs (any fleet)
-        if (d < 3 && d > 0.1) {
-          separation.add(sep.normalize().multiplyScalar(0.03 * (3 - d)));
+        if (d < 2.5 && d > 0.1) {
+          separation.add(sep.normalize().multiplyScalar(0.04 * (2.5 - d)));
         }
       });
       if (flockCount > 0) {
         cohesion.divideScalar(flockCount).sub(e.mesh.position);
-        e.mesh.position.add(cohesion.multiplyScalar(0.008));
+        // Strong cohesion to keep squads tight
+        e.mesh.position.add(cohesion.multiplyScalar(0.02));
       }
       e.mesh.position.add(separation);
     }

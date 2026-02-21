@@ -42,12 +42,14 @@
   <span>SCORE: <span class="score-val" id="scoreDisplay">0</span></span>
   <span>LIVES: <span class="lives-val" id="livesDisplay">3</span></span>
   <span>WAVE: <span class="wave-val" id="waveDisplay">1</span></span>
+  <span>BOMBS: <span style="color:#44aaff" id="bombsDisplay">3</span></span>
 </div>
 <div id="overlay" class="active">
   <h1>PIG GALAGA 3D</h1>
   <h2>The Pig Family Strikes Back!</h2>
   <div class="info">← → or A/D to move</div>
   <div class="info">SPACE or Z to shoot</div>
+  <div class="info">B to drop electric bomb (3 per wave)</div>
   <div class="start blink">Press SPACE to Start</div>
 </div>
 <div id="baconBar">
@@ -137,6 +139,28 @@ function sfxBaconBoost() {
 function sfxWave() {
   playOink(300, 0.2); setTimeout(() => playOink(400, 0.2), 120);
   setTimeout(() => playOink(500, 0.25), 240); setTimeout(() => playOink(350, 0.3), 400);
+}
+function sfxBomb() {
+  const ctx = ensureAudio(); const t = ctx.currentTime;
+  // Electric zap
+  const osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(150, t);
+  osc.frequency.exponentialRampToValueAtTime(40, t + 0.6);
+  gain.gain.setValueAtTime(0.3, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(t); osc.stop(t + 0.6);
+  // Crackle noise
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.4, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() > 0.92 ? 1 : 0) * (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.25, t);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2000;
+  src.connect(hp); hp.connect(g2); g2.connect(ctx.destination);
+  src.start(t); src.stop(t + 0.4);
 }
 
 // ─── Three.js Setup ───
@@ -423,7 +447,9 @@ function spawnParticles3D(x, y, z, color, count) {
 let score = 0, lives = 3, wave = 1;
 let gameOver = false, gameStarted = false;
 let invincibleTimer = 0, baconBoostTimer = 0;
-let shakeTimer = 0;
+let shakeTimer = 0, bombs = 3;
+let bombCooldown = 0;
+let bombRings = []; // active electric bomb visual rings
 let frameCount = 0;
 let enemyFormationDir = 1, enemyDiveTimer = 0, waveTransition = 0;
 
@@ -527,7 +553,7 @@ function startGame() {
 
 function restartGame() {
   score = 0; lives = 3; wave = 1;
-  gameOver = false; invincibleTimer = 120; baconBoostTimer = 0;
+  gameOver = false; invincibleTimer = 120; baconBoostTimer = 0; bombs = 3;
   document.getElementById('overlay').classList.remove('active');
   document.getElementById('overlay').style.display = 'none';
   initGame();
@@ -582,6 +608,101 @@ function update() {
     }
     sfxShoot();
   }
+
+  // Electric Bomb
+  if (bombCooldown > 0) bombCooldown--;
+  if ((keys['b'] || keys['B']) && bombs > 0 && bombCooldown <= 0) {
+    bombs--;
+    bombCooldown = 30;
+    sfxBomb();
+    shakeTimer = 10;
+
+    // Create expanding electric ring
+    const ringGeo = new THREE.TorusGeometry(0.5, 0.08, 8, 32);
+    const ringMat = new THREE.MeshStandardMaterial({
+      color: 0x44aaff, emissive: 0x44aaff, emissiveIntensity: 2.0,
+      transparent: true, opacity: 1.0
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.set(playerObj.x, 1, 12);
+    ring.rotation.x = -Math.PI / 2;
+    scene.add(ring);
+
+    // Second ring
+    const ring2 = new THREE.Mesh(ringGeo.clone(), ringMat.clone());
+    ring2.position.set(playerObj.x, 1, 12);
+    ring2.rotation.x = -Math.PI / 2;
+    scene.add(ring2);
+
+    bombRings.push(
+      { mesh: ring, cx: playerObj.x, cz: 12, radius: 0.5, maxRadius: 15, life: 60, maxLife: 60, dealt: new Set() },
+      { mesh: ring2, cx: playerObj.x, cz: 12, radius: 0.5, maxRadius: 15, life: 55, maxLife: 55, dealt: new Set() }
+    );
+
+    // Flash particles at origin
+    spawnParticles3D(playerObj.x, 1, 12, 0x44aaff, 15);
+    spawnParticles3D(playerObj.x, 1, 12, 0xffffff, 8);
+    keys['b'] = false; keys['B'] = false;
+  }
+
+  // Update bomb rings
+  bombRings = bombRings.filter(br => {
+    br.life--;
+    br.radius += (br.maxRadius - 0.5) / br.maxLife;
+    br.mesh.scale.setScalar(br.radius * 2);
+    br.mesh.material.opacity = br.life / br.maxLife * 0.8;
+
+    // Lightning crackle particles along the ring edge
+    if (br.life % 3 === 0) {
+      const angle = Math.random() * Math.PI * 2;
+      spawnParticles3D(
+        br.cx + Math.cos(angle) * br.radius,
+        1,
+        br.cz + Math.sin(angle) * br.radius,
+        0x88ccff, 2
+      );
+    }
+
+    // Destroy enemy bullets in radius
+    enemyBulletObjs.forEach(b => {
+      const dx = b.mesh.position.x - br.cx;
+      const dz = b.mesh.position.z - br.cz;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < br.radius) {
+        spawnParticles3D(b.mesh.position.x, 1, b.mesh.position.z, 0x44aaff, 3);
+        b.mesh.position.z = 999;
+      }
+    });
+
+    // Damage/kill enemies in radius
+    enemyObjs.forEach(e => {
+      if (!e.alive || br.dealt.has(e)) return;
+      const dx = e.mesh.position.x - br.cx;
+      const dz = e.mesh.position.z - br.cz;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < br.radius) {
+        br.dealt.add(e);
+        e.hp -= 3;
+        spawnParticles3D(e.mesh.position.x, 1, e.mesh.position.z, 0x44aaff, 6);
+        sfxHitPig();
+        if (e.hp <= 0) {
+          e.alive = false;
+          e.mesh.visible = false;
+          score += e.points;
+          spawnParticles3D(e.mesh.position.x, 1, e.mesh.position.z, 0xff6b6b, 12);
+          sfxPigDeath();
+          if (e.type === 4) {
+            baconBoostTimer = 600;
+            sfxBaconBoost();
+            spawnParticles3D(e.mesh.position.x, 1, e.mesh.position.z, 0xffd700, 25);
+          }
+        }
+      }
+    });
+
+    if (br.life <= 0) { scene.remove(br.mesh); return false; }
+    return true;
+  });
 
   // Update bullets
   bulletObjs = bulletObjs.filter(b => {
@@ -751,6 +872,7 @@ function update() {
     wave++;
     waveTransition = 120;
     sfxWave();
+    bombs = 3;
     spawnWave(wave);
   }
   if (waveTransition > 0) waveTransition--;
@@ -769,6 +891,7 @@ function update() {
   document.getElementById('scoreDisplay').textContent = score;
   document.getElementById('livesDisplay').textContent = lives;
   document.getElementById('waveDisplay').textContent = wave;
+  document.getElementById('bombsDisplay').textContent = bombs;
 
   // Bacon boost bar
   const baconBar = document.getElementById('baconBar');

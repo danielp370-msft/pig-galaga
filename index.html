@@ -40,6 +40,7 @@
   <span>SCORE: <span class="score-val" id="scoreDisplay">0</span></span>
   <span>LIVES: <span class="lives-val" id="livesDisplay">3</span></span>
   <span>WAVE: <span class="wave-val" id="waveDisplay">1</span></span>
+  <span>BOMBS: <span style="color:#44aaff" id="bombsDisplay">3</span></span>
 </div>
 <canvas id="game"></canvas>
 
@@ -170,6 +171,27 @@ function sfxPowerup() {
   });
 }
 
+function sfxBomb() {
+  const ctx = ensureAudio(); const t = ctx.currentTime;
+  const osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(150, t);
+  osc.frequency.exponentialRampToValueAtTime(40, t + 0.6);
+  gain.gain.setValueAtTime(0.3, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(t); osc.stop(t + 0.6);
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.4, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() > 0.92 ? 1 : 0) * (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.25, t);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2000;
+  src.connect(hp); hp.connect(g2); g2.connect(ctx.destination);
+  src.start(t); src.stop(t + 0.4);
+}
+
 function sfxBaconBoost() {
   const ctx = ensureAudio();
   const t = ctx.currentTime;
@@ -213,7 +235,9 @@ let enemyFormationDir = 1;
 let enemyDiveTimer = 0;
 let waveTransition = 0;
 let shakeTimer = 0;
-let baconBoostTimer = 0; // frames remaining for triple-fire
+let baconBoostTimer = 0;
+let bombs = 3, bombCooldown = 0;
+let bombEffects = []; // expanding electric rings
 
 // ─── Input ───
 const keys = {};
@@ -618,6 +642,21 @@ function update() {
     sfxShoot();
   }
 
+  // Electric Bomb
+  if (bombCooldown > 0) bombCooldown--;
+  if ((keys['b'] || keys['B']) && bombs > 0 && bombCooldown <= 0) {
+    bombs--;
+    bombCooldown = 20;
+    sfxBomb();
+    shakeTimer = 10;
+    bombEffects.push({
+      x: player.x, y: player.y, radius: 10, maxRadius: 200,
+      life: 40, maxLife: 40, dealt: new Set()
+    });
+    spawnParticles(player.x, player.y, '#44aaff', 15);
+    keys['b'] = false; keys['B'] = false;
+  }
+
   // Invincibility
   if (invincibleTimer > 0) invincibleTimer--;
 
@@ -798,6 +837,46 @@ function update() {
     return p.life > 0;
   });
 
+  // Bomb effects
+  bombEffects = bombEffects.filter(b => {
+    b.life--;
+    b.radius += (b.maxRadius - 10) / b.maxLife;
+
+    // Destroy enemy bullets in radius
+    enemyBullets.forEach(eb => {
+      const dx = eb.x - b.x, dy = eb.y - b.y;
+      if (Math.sqrt(dx * dx + dy * dy) < b.radius) {
+        spawnParticles(eb.x, eb.y, '#44aaff', 3);
+        eb.y = 9999;
+      }
+    });
+
+    // Damage enemies in radius
+    enemies.forEach(e => {
+      if (!e.alive || b.dealt.has(e)) return;
+      const dx = e.x - b.x, dy = e.y - b.y;
+      if (Math.sqrt(dx * dx + dy * dy) < b.radius) {
+        b.dealt.add(e);
+        e.hp -= 3;
+        spawnParticles(e.x, e.y, '#44aaff', 6);
+        sfxHitPig();
+        if (e.hp <= 0) {
+          e.alive = false;
+          score += e.points;
+          spawnParticles(e.x, e.y, '#ff6b6b', 12);
+          sfxPigDeath();
+          if (e.type === 4) {
+            baconBoostTimer = 600;
+            sfxBaconBoost();
+            spawnParticles(e.x, e.y, '#ffd700', 25);
+          }
+        }
+      }
+    });
+
+    return b.life > 0;
+  });
+
   // Stars
   stars.forEach(s => {
     s.y += s.speed;
@@ -812,6 +891,7 @@ function update() {
     wave++;
     waveTransition = 120;
     sfxWave();
+    bombs = 3;
     spawnWave(wave);
   }
 
@@ -822,6 +902,7 @@ function update() {
   document.getElementById('scoreDisplay').textContent = score;
   document.getElementById('livesDisplay').textContent = lives;
   document.getElementById('waveDisplay').textContent = wave;
+  document.getElementById('bombsDisplay').textContent = bombs;
 }
 
 function playerHit() {
@@ -889,6 +970,40 @@ function draw() {
     ctx.font = 'bold 10px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('⚡', p.x, p.y + 4);
+  });
+
+  // Electric bomb rings
+  bombEffects.forEach(b => {
+    const alpha = b.life / b.maxLife;
+    // Outer ring
+    ctx.strokeStyle = `rgba(68, 170, 255, ${alpha * 0.9})`;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#44aaff';
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    // Inner ring
+    ctx.strokeStyle = `rgba(136, 204, 255, ${alpha * 0.5})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.radius * 0.7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // Electric arcs
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2 + b.life * 0.2;
+      const r = b.radius * (0.6 + Math.random() * 0.4);
+      ctx.strokeStyle = `rgba(200, 230, 255, ${alpha * 0.7})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(b.x + Math.cos(angle) * r * 0.3, b.y + Math.sin(angle) * r * 0.3);
+      const mid1x = b.x + Math.cos(angle + 0.1) * r * 0.6 + (Math.random() - 0.5) * 15;
+      const mid1y = b.y + Math.sin(angle + 0.1) * r * 0.6 + (Math.random() - 0.5) * 15;
+      ctx.lineTo(mid1x, mid1y);
+      ctx.lineTo(b.x + Math.cos(angle) * r, b.y + Math.sin(angle) * r);
+      ctx.stroke();
+    }
   });
 
   // Player bullets
@@ -1038,6 +1153,7 @@ function drawTitleScreen() {
   ctx.font = '13px monospace';
   ctx.fillText('← → or A/D to move', W / 2, H * 0.80);
   ctx.fillText('SPACE or Z to shoot', W / 2, H * 0.85);
+  ctx.fillText('B for electric bomb (3/wave)', W / 2, H * 0.89);
   ctx.fillText('Mobile: touch to play', W / 2, H * 0.90);
 }
 
@@ -1048,6 +1164,7 @@ function restartGame() {
   gameOver = false;
   invincibleTimer = 120;
   baconBoostTimer = 0;
+  bombs = 3;
   initGame();
 }
 

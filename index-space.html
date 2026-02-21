@@ -794,10 +794,10 @@ function update(dt) {
     }
   });
 
-  // Dive trigger — send multiple pigs
-  if (frame % Math.max(30, 120 - wave * 15) === 0) {
+  // Dive trigger — send pigs on attack runs
+  if (frame % Math.max(90, 300 - wave * 20) === 0) {
     const candidates = enemies.filter(e => e.alive && !e.diving);
-    const count = Math.min(candidates.length, 1 + Math.floor(wave / 2));
+    const count = Math.min(candidates.length, 1 + Math.floor(wave / 3));
     for (let i = 0; i < count; i++) {
       const idx = Math.floor(Math.random() * candidates.length);
       const diver = candidates.splice(idx, 1)[0];

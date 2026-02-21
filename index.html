@@ -33,6 +33,17 @@
   .score-val { color: #ffdd57; }
   .lives-val { color: #ff6b6b; }
   .wave-val { color: #69db7c; }
+  #bombBtn {
+    position: absolute; bottom: 20px; right: 20px; z-index: 10;
+    width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(68,170,255,0.25); border: 2px solid #44aaff;
+    color: #44aaff; font-size: 24px; font-family: monospace;
+    display: none; align-items: center; justify-content: center;
+    user-select: none; -webkit-user-select: none;
+    cursor: pointer; touch-action: manipulation;
+  }
+  #bombBtn:active { background: rgba(68,170,255,0.5); }
+  @media (pointer: coarse) { #bombBtn { display: flex; } }
 </style>
 </head>
 <body>
@@ -40,8 +51,9 @@
   <span>SCORE: <span class="score-val" id="scoreDisplay">0</span></span>
   <span>LIVES: <span class="lives-val" id="livesDisplay">3</span></span>
   <span>WAVE: <span class="wave-val" id="waveDisplay">1</span></span>
-  <span>BOMBS: <span style="color:#44aaff" id="bombsDisplay">3</span></span>
+  <span>BOMBS: <span style="color:#44aaff" id="bombsDisplay">5</span></span>
 </div>
+<button id="bombBtn">💣</button>
 <canvas id="game"></canvas>
 
 <script>
@@ -236,7 +248,7 @@ let enemyDiveTimer = 0;
 let waveTransition = 0;
 let shakeTimer = 0;
 let baconBoostTimer = 0;
-let bombs = 3, bombCooldown = 0;
+let bombs = 5, bombCooldown = 0;
 let bombEffects = []; // expanding electric rings
 
 // ─── Input ───
@@ -265,6 +277,13 @@ canvas.addEventListener('touchmove', e => {
 canvas.addEventListener('touchend', e => {
   touchX = null;
   touchShooting = false;
+});
+
+// Touch bomb button
+document.getElementById('bombBtn').addEventListener('touchstart', e => {
+  e.preventDefault(); e.stopPropagation();
+  keys['b'] = true;
+  setTimeout(() => { keys['b'] = false; }, 100);
 });
 
 // ─── Stars ───
@@ -891,7 +910,7 @@ function update() {
     wave++;
     waveTransition = 120;
     sfxWave();
-    bombs = 3;
+    bombs = 5;
     spawnWave(wave);
   }
 
@@ -1153,7 +1172,7 @@ function drawTitleScreen() {
   ctx.font = '13px monospace';
   ctx.fillText('← → or A/D to move', W / 2, H * 0.80);
   ctx.fillText('SPACE or Z to shoot', W / 2, H * 0.85);
-  ctx.fillText('B for electric bomb (3/wave)', W / 2, H * 0.89);
+  ctx.fillText('B for electric bomb (5/wave)', W / 2, H * 0.89);
   ctx.fillText('Mobile: touch to play', W / 2, H * 0.90);
 }
 
@@ -1164,7 +1183,7 @@ function restartGame() {
   gameOver = false;
   invincibleTimer = 120;
   baconBoostTimer = 0;
-  bombs = 3;
+  bombs = 5;
   initGame();
 }
 

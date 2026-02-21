@@ -35,6 +35,17 @@
   #baconBar .label { color: #ff6600; font-size: 16px; font-weight: bold; font-family: monospace; }
   #baconBar .bar { width: 200px; height: 6px; background: #331100; margin-top: 4px; border-radius: 3px; }
   #baconBar .fill { height: 100%; background: #ff6600; border-radius: 3px; transition: width 0.1s; }
+  #bombBtn {
+    position: absolute; bottom: 20px; right: 20px; z-index: 10;
+    width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(68,170,255,0.25); border: 2px solid #44aaff;
+    color: #44aaff; font-size: 24px; font-family: monospace;
+    display: none; align-items: center; justify-content: center;
+    user-select: none; -webkit-user-select: none;
+    cursor: pointer; touch-action: manipulation;
+  }
+  #bombBtn:active { background: rgba(68,170,255,0.5); }
+  @media (pointer: coarse) { #bombBtn { display: flex; } }
 </style>
 </head>
 <body>
@@ -42,20 +53,21 @@
   <span>SCORE: <span class="score-val" id="scoreDisplay">0</span></span>
   <span>LIVES: <span class="lives-val" id="livesDisplay">3</span></span>
   <span>WAVE: <span class="wave-val" id="waveDisplay">1</span></span>
-  <span>BOMBS: <span style="color:#44aaff" id="bombsDisplay">3</span></span>
+  <span>BOMBS: <span style="color:#44aaff" id="bombsDisplay">5</span></span>
 </div>
 <div id="overlay" class="active">
   <h1>PIG GALAGA 3D</h1>
   <h2>The Pig Family Strikes Back!</h2>
   <div class="info">← → or A/D to move</div>
   <div class="info">SPACE or Z to shoot</div>
-  <div class="info">B to drop electric bomb (3 per wave)</div>
+  <div class="info">B to drop electric bomb (5 per wave)</div>
   <div class="start blink">Press SPACE to Start</div>
 </div>
 <div id="baconBar">
   <div class="label">🥓 BACON BOOST <span id="baconTime">10</span>s 🥓</div>
   <div class="bar"><div class="fill" id="baconFill" style="width:100%"></div></div>
 </div>
+<button id="bombBtn">💣</button>
 
 <script type="importmap">
 {
@@ -447,7 +459,7 @@ function spawnParticles3D(x, y, z, color, count) {
 let score = 0, lives = 3, wave = 1;
 let gameOver = false, gameStarted = false;
 let invincibleTimer = 0, baconBoostTimer = 0;
-let shakeTimer = 0, bombs = 3;
+let shakeTimer = 0, bombs = 5;
 let bombCooldown = 0;
 let bombRings = []; // active electric bomb visual rings
 let frameCount = 0;
@@ -473,6 +485,11 @@ renderer.domElement.addEventListener('touchmove', e => {
   touchX = ((e.touches[0].clientX - rect.left) / rect.width - 0.5) * FIELD_W;
 });
 renderer.domElement.addEventListener('touchend', () => { touchX = null; touchShooting = false; });
+document.getElementById('bombBtn').addEventListener('touchstart', e => {
+  e.preventDefault(); e.stopPropagation();
+  keys['b'] = true;
+  setTimeout(() => { keys['b'] = false; }, 100);
+});
 
 // ─── Game Objects ───
 let playerObj = { x: 0, speed: 0.3, shootCooldown: 0, mesh: null };
@@ -553,7 +570,7 @@ function startGame() {
 
 function restartGame() {
   score = 0; lives = 3; wave = 1;
-  gameOver = false; invincibleTimer = 120; baconBoostTimer = 0; bombs = 3;
+  gameOver = false; invincibleTimer = 120; baconBoostTimer = 0; bombs = 5;
   document.getElementById('overlay').classList.remove('active');
   document.getElementById('overlay').style.display = 'none';
   initGame();
@@ -872,7 +889,7 @@ function update() {
     wave++;
     waveTransition = 120;
     sfxWave();
-    bombs = 3;
+    bombs = 5;
     spawnWave(wave);
   }
   if (waveTransition > 0) waveTransition--;

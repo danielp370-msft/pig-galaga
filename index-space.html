@@ -352,14 +352,29 @@ renderer.domElement.addEventListener('touchstart', e => {
   e.preventDefault();
   for (const t of e.changedTouches) {
     const x = t.clientX / window.innerWidth;
-    if (x > 0.5) {
+    if (e.touches.length === 1) {
+      // Single finger — always aim/rotate
       touchAimId = t.identifier;
       touchAimX = t.clientX;
       touchAimY = t.clientY;
-    } else {
+    } else if (x > 0.5 && touchAimId === null) {
+      // Second finger right side = aim
+      touchAimId = t.identifier;
+      touchAimX = t.clientX;
+      touchAimY = t.clientY;
+    } else if (x <= 0.5 && touchMoveId === null) {
+      // Second finger left side = move
       touchMoveId = t.identifier;
       touchMoveX = t.clientX;
       touchMoveY = t.clientY;
+    } else if (touchMoveId === null) {
+      touchMoveId = t.identifier;
+      touchMoveX = t.clientX;
+      touchMoveY = t.clientY;
+    } else if (touchAimId === null) {
+      touchAimId = t.identifier;
+      touchAimX = t.clientX;
+      touchAimY = t.clientY;
     }
   }
   touchShooting = true;

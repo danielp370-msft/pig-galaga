@@ -754,7 +754,7 @@ function update(dt) {
 
   // Formation tracks player — stay at a visible combat distance ahead
   const playerSpeed = shipVel.length();
-  const interceptPoint = shipPos.clone().add(fwd.clone().multiplyScalar(playerSpeed * 15 + 12));
+  const interceptPoint = shipPos.clone().add(fwd.clone().multiplyScalar(playerSpeed * 10 + 6));
 
   enemies.forEach(e => {
     if (!e.alive) return;
@@ -770,16 +770,11 @@ function update(dt) {
       const homeDist = toTarget.length();
 
       if (e.fleet === 0 || !anyClose) {
-        // Main fleet always approaches; others come in when nobody is close
-        if (homeDist > 5) {
-          e.homePos.lerp(myTarget, 0.015);
-          // Constant speed push when far so they don't crawl
-          if (homeDist > 15) {
-            e.homePos.add(toTarget.clone().normalize().multiplyScalar(0.5));
-          }
+        e.homePos.lerp(myTarget, 0.015);
+        if (homeDist > 15) {
+          e.homePos.add(toTarget.clone().normalize().multiplyScalar(0.5));
         }
       }
-      // Otherwise this fleet holds position until combat zone is clear
 
       // Gentle repel from nearby pigs — much softer to avoid jitter
       enemies.forEach(other => {

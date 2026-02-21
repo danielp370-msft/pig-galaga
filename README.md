@@ -4,15 +4,24 @@
 
 ## 🎮 Play Now
 
-**👉 [https://danielp370-msft.github.io/pig-galaga/](https://danielp370-msft.github.io/pig-galaga/)**
+<a href="https://danielp370-msft.github.io/pig-galaga/">
+  <img src="https://img.shields.io/badge/%F0%9F%90%B7%20PLAY%20NOW-Pig%20Galaga-ff69b4?style=for-the-badge&logoColor=white" alt="Play Pig Galaga" />
+</a>
 
-Pick your battle from the landing page, or jump straight into a game:
+<details>
+<summary>📺 Landing Page Preview</summary>
 
-| Game | Link | Description |
-|------|------|-------------|
-| 👾 **Classic 2D** | [Play](https://danielp370-msft.github.io/pig-galaga/galaga-2d.html) | Old-school Galaga with pig formations dive-bombing from above |
-| 🎮 **3D Battle** | [Play](https://danielp370-msft.github.io/pig-galaga/index3d.html) | Same arcade gameplay with Three.js lighting, shadows & particles |
-| 🚀 **Space Shooter** | [Play](https://danielp370-msft.github.io/pig-galaga/index-space.html) | Full 3D dogfighting — pig squads in V-formation swarm around you |
+<!-- GitHub renders iframes in some contexts; falls back to screenshot link -->
+<a href="https://danielp370-msft.github.io/pig-galaga/">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://danielp370-msft.github.io/pig-galaga/">
+    <img alt="Pig Galaga Landing Page — 3D pigs orbiting behind game selection cards" src="https://danielp370-msft.github.io/pig-galaga/" width="600">
+  </picture>
+</a>
+
+*Click above or the Play Now button to launch the game picker with 3D pigs floating in the background!*
+
+</details>
 
 ## 🐖 Meet the Pig Family
 
@@ -40,6 +49,16 @@ This entire project was built through natural language conversation with **GitHu
 Each game is a **single HTML file** — no bundlers, no npm, no build step. Just open the file in a browser and play. Three.js is loaded from a CDN. All sound effects are synthesized with the Web Audio API (oinks, laser pews, explosions — no audio files needed).
 
 The whole thing was genuinely fun to build. Copilot handled everything from the initial game loop to fine-tuning pig AI behavior, collision physics, touch controls, and deployment to GitHub Pages. It felt more like directing a game than programming one.
+
+## 🔗 Direct Game Links
+
+Don't want the landing page? Jump straight into a game:
+
+| Game | Link | Description |
+|------|------|-------------|
+| 👾 **Classic 2D** | [Play](https://danielp370-msft.github.io/pig-galaga/galaga-2d.html) | Old-school Galaga with pig formations dive-bombing from above |
+| 🎮 **3D Battle** | [Play](https://danielp370-msft.github.io/pig-galaga/index3d.html) | Same arcade gameplay with Three.js lighting, shadows & particles |
+| 🚀 **Space Shooter** | [Play](https://danielp370-msft.github.io/pig-galaga/index-space.html) | Full 3D dogfighting — pig squads in V-formation swarm around you |
 
 ## 🕹️ Controls
 

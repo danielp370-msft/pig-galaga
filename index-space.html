@@ -752,57 +752,43 @@ function update(dt) {
   const COMBAT_RANGE = 25;
   const anyClose = enemies.some(e => e.alive && e.mesh.position.distanceTo(shipMesh.position) < COMBAT_RANGE);
 
-  // Formation tracks player — stay at a visible combat distance ahead
-  const playerSpeed = shipVel.length();
-  const interceptPoint = shipPos.clone().add(fwd.clone().multiplyScalar(playerSpeed * 10 + 6));
-
   enemies.forEach(e => {
     if (!e.alive) return;
     e.frame++;
-    // Track velocity as position delta
     const pigVel = e.mesh.position.clone().sub(e.prevPos);
     e.prevPos.copy(e.mesh.position);
 
-    // Chase: each pig targets intercept point offset by its formation position
     if (!e.diving) {
-      const myTarget = interceptPoint.clone().add(e.origOffset);
-      const toTarget = myTarget.clone().sub(e.homePos);
-      const homeDist = toTarget.length();
-
-      if (e.fleet === 0 || !anyClose) {
-        e.homePos.lerp(myTarget, 0.015);
-        if (homeDist > 15) {
-          e.homePos.add(toTarget.clone().normalize().multiplyScalar(0.5));
+      // Swarm around the player — orbit at a radius
+      const swarming = e.fleet === 0 || !anyClose;
+      if (swarming) {
+        const swarmRadius = 8 + e.origOffset.length() * 0.5;
+        e.orbitAngle += e.orbitSpeed;
+        // Each pig orbits at its own angle/phase around the player
+        const orbitTarget = new THREE.Vector3(
+          shipPos.x + Math.sin(e.orbitAngle) * swarmRadius * (1 + Math.sin(e.frame * 0.003) * 0.3),
+          shipPos.y + Math.sin(e.orbitAngle * 0.7 + e.frame * 0.005) * swarmRadius * 0.4,
+          shipPos.z + Math.cos(e.orbitAngle) * swarmRadius * (1 + Math.cos(e.frame * 0.004) * 0.3)
+        );
+        // Move toward orbit — fast approach, smooth once close
+        const distToTarget = e.mesh.position.distanceTo(orbitTarget);
+        if (distToTarget > 20) {
+          const dir = orbitTarget.clone().sub(e.mesh.position).normalize();
+          e.mesh.position.add(dir.multiplyScalar(Math.min(distToTarget * 0.06, 0.8)));
+        } else {
+          e.mesh.position.lerp(orbitTarget, 0.06);
         }
       }
 
-      // Gentle repel from nearby pigs — much softer to avoid jitter
+      // Gentle repel from nearby pigs
       enemies.forEach(other => {
         if (other === e || !other.alive) return;
-        const sep = e.homePos.clone().sub(other.homePos);
+        const sep = e.mesh.position.clone().sub(other.mesh.position);
         const d = sep.length();
-        if (d < 5 && d > 0.1) {
-          e.homePos.add(sep.normalize().multiplyScalar(0.01 * (5 - d)));
+        if (d < 3 && d > 0.1) {
+          e.mesh.position.add(sep.normalize().multiplyScalar(0.02 * (3 - d)));
         }
       });
-
-      // Smooth orbit around home position
-      e.orbitAngle += e.orbitSpeed;
-      const orbR = 2;
-      const orbitTarget = new THREE.Vector3(
-        e.homePos.x + Math.sin(e.orbitAngle) * orbR,
-        e.homePos.y + Math.sin(e.orbitAngle * 0.7) * orbR * 0.5,
-        e.homePos.z + Math.cos(e.orbitAngle) * orbR
-      );
-      // Move toward orbit target — fast when far, gentle when close
-      const returnDist = e.mesh.position.distanceTo(orbitTarget);
-      if (returnDist > 20) {
-        const moveDir = orbitTarget.clone().sub(e.mesh.position).normalize();
-        e.mesh.position.add(moveDir.multiplyScalar(Math.min(returnDist * 0.05, 0.6)));
-      } else {
-        const lerpSpeed = returnDist > 10 ? 0.04 : 0.08;
-        e.mesh.position.lerp(orbitTarget, lerpSpeed);
-      }
     }
 
     // Face toward player

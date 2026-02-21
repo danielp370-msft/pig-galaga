@@ -466,31 +466,31 @@ function spawnWave(w) {
   const dist = 20 + w * 3;
   const extra = Math.floor(w / 3);
 
-  // Forward cluster — main group
-  addRing(new THREE.Vector3(0, 0, -dist), 10 + w, 8 + w, 0, 1 + extra);
+  // Forward cluster — main group, tight formation
+  addRing(new THREE.Vector3(0, 0, -dist), 5 + w * 0.5, 8 + w, 0, 1 + extra);
 
-  // Side rings — pushed way out so they arrive later
+  // Side rings — pushed out so they arrive later
   if (w >= 2) {
     const sideDist = dist * 2;
-    addRing(new THREE.Vector3(-sideDist, 8, -sideDist * 0.6), 8, 6, 1, 2 + extra);
-    addRing(new THREE.Vector3(sideDist, -8, -sideDist * 0.6), 8, 6, 1, 2 + extra);
+    addRing(new THREE.Vector3(-sideDist, 8, -sideDist * 0.6), 5, 6, 1, 2 + extra);
+    addRing(new THREE.Vector3(sideDist, -8, -sideDist * 0.6), 5, 6, 1, 2 + extra);
   }
 
-  // Above/below — far out
+  // Above/below — far out, tight grids
   if (w >= 3) {
     const vertDist = dist * 2.5;
-    addGrid(new THREE.Vector3(0, vertDist * 0.5, -vertDist * 0.7), 2, 4, 4, 2, 3 + extra);
-    addGrid(new THREE.Vector3(0, -vertDist * 0.5, -vertDist * 0.5), 2, 3, 4, 2, 3 + extra);
+    addGrid(new THREE.Vector3(0, vertDist * 0.5, -vertDist * 0.7), 2, 4, 2.5, 2, 3 + extra);
+    addGrid(new THREE.Vector3(0, -vertDist * 0.5, -vertDist * 0.5), 2, 3, 2.5, 2, 3 + extra);
   }
 
   // Behind! — very far
   if (w >= 4) {
-    addRing(new THREE.Vector3(0, 0, dist * 2), 12, 6, 3, 4 + extra);
+    addRing(new THREE.Vector3(0, 0, dist * 2), 6, 6, 3, 4 + extra);
   }
 
-  // Surround sphere — distant
+  // Surround sphere — distant, tighter
   if (w >= 5) {
-    addSphere(new THREE.Vector3(0, 0, -dist * 1.5), dist * 0.6, 6 + w, 0, 1 + extra);
+    addSphere(new THREE.Vector3(0, 0, -dist * 1.5), dist * 0.35, 6 + w, 0, 1 + extra);
   }
 
   // Bacon Kings — spread further out

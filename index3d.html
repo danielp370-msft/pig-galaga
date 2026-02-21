@@ -495,7 +495,7 @@ document.getElementById('bombBtn').addEventListener('mousedown', e => {
 });
 
 // ─── Game Objects ───
-let playerObj = { x: 0, speed: 0.3, shootCooldown: 0, mesh: null };
+let playerObj = { x: 0, speed: 0.3, shootCooldown: 0, mesh: null, shipHp: 3, maxShipHp: 3 };
 let bulletObjs = [];
 let enemyObjs = [];
 let enemyBulletObjs = [];
@@ -516,6 +516,8 @@ function initGame() {
   playerObj.mesh.position.set(0, PLAYER_Y, 12);
   playerObj.x = 0;
   playerObj.shootCooldown = 0;
+  playerObj.shipHp = 3;
+  playerObj.maxShipHp = 3;
   scene.add(playerObj.mesh);
 
   spawnWave(wave);
@@ -908,15 +910,17 @@ function update() {
   }
   if (waveTransition > 0) waveTransition--;
 
-  // Shake
+  // Shake + parallax
+  const parallaxX = playerObj.x * 0.15;
   if (shakeTimer > 0) {
     shakeTimer--;
-    camera.position.x = (Math.random() - 0.5) * shakeTimer * 0.05;
+    camera.position.x = parallaxX + (Math.random() - 0.5) * shakeTimer * 0.05;
     camera.position.y = 25 + (Math.random() - 0.5) * shakeTimer * 0.05;
   } else {
-    camera.position.x = 0;
+    camera.position.x += (parallaxX - camera.position.x) * 0.08;
     camera.position.y = 25;
   }
+  camera.lookAt(parallaxX * 0.5, 0, -5);
 
   // HUD
   document.getElementById('scoreDisplay').textContent = score;
@@ -951,22 +955,27 @@ function spawnEnemyBullet(x, z, vx, vz) {
 }
 
 function playerHit() {
-  lives--;
-  shakeTimer = 15;
-  spawnParticles3D(playerObj.x, PLAYER_Y, 12, 0x4dabf7, 20);
-  spawnParticles3D(playerObj.x, PLAYER_Y, 12, 0xffcc00, 15);
+  playerObj.shipHp--;
+  shakeTimer = 10;
+  spawnParticles3D(playerObj.x, PLAYER_Y, 12, 0x4dabf7, 10);
   sfxPlayerHit();
-  invincibleTimer = 120;
-  if (lives <= 0) {
-    gameOver = true;
-    const ov = document.getElementById('overlay');
-    ov.innerHTML = `
-      <h1 style="color:#ff6b6b">GAME OVER</h1>
-      <h2 style="color:#ffdd57">Score: ${score}</h2>
-      <div class="start blink">Press ENTER or Tap to restart</div>
-    `;
-    ov.style.display = 'flex';
-    ov.classList.add('active');
+  invincibleTimer = 60;
+  if (playerObj.shipHp <= 0) {
+    lives--;
+    spawnParticles3D(playerObj.x, PLAYER_Y, 12, 0xffcc00, 20);
+    invincibleTimer = 120;
+    playerObj.shipHp = playerObj.maxShipHp;
+    if (lives <= 0) {
+      gameOver = true;
+      const ov = document.getElementById('overlay');
+      ov.innerHTML = `
+        <h1 style="color:#ff6b6b">GAME OVER</h1>
+        <h2 style="color:#ffdd57">Score: ${score}</h2>
+        <div class="start blink">Press ENTER or Tap to restart</div>
+      `;
+      ov.style.display = 'flex';
+      ov.classList.add('active');
+    }
   }
 }
 

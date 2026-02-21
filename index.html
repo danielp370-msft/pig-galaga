@@ -38,12 +38,11 @@
     width: 64px; height: 64px; border-radius: 50%;
     background: rgba(68,170,255,0.25); border: 2px solid #44aaff;
     color: #44aaff; font-size: 24px; font-family: monospace;
-    display: none; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     user-select: none; -webkit-user-select: none;
     cursor: pointer; touch-action: manipulation;
   }
   #bombBtn:active { background: rgba(68,170,255,0.5); }
-  @media (pointer: coarse) { #bombBtn { display: flex; } }
 </style>
 </head>
 <body>
@@ -282,6 +281,11 @@ canvas.addEventListener('touchend', e => {
 // Touch bomb button
 document.getElementById('bombBtn').addEventListener('touchstart', e => {
   e.preventDefault(); e.stopPropagation();
+  keys['b'] = true;
+  setTimeout(() => { keys['b'] = false; }, 100);
+});
+document.getElementById('bombBtn').addEventListener('mousedown', e => {
+  e.preventDefault();
   keys['b'] = true;
   setTimeout(() => { keys['b'] = false; }, 100);
 });

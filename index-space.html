@@ -945,7 +945,7 @@ function update(dt) {
 
 const radarCanvas = document.getElementById('radar');
 const radarCtx = radarCanvas.getContext('2d');
-const RADAR_R = 70, RADAR_RANGE = 80;
+const RADAR_R = 70, RADAR_RANGE = 35;
 
 function drawRadar() {
   const ctx = radarCtx;
@@ -961,24 +961,24 @@ function drawRadar() {
   ctx.beginPath(); ctx.moveTo(RADAR_R, 10); ctx.lineTo(RADAR_R, 130); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(10, RADAR_R); ctx.lineTo(130, RADAR_R); ctx.stroke();
 
-  // Get ship's forward and right in XZ plane for radar projection
-  const shipFwd2 = new THREE.Vector2(-Math.sin(shipEuler.y), -Math.cos(shipEuler.y));
-  const shipRight2 = new THREE.Vector2(shipFwd2.y, -shipFwd2.x);
+  // Rotate relative positions by ship yaw to get ship-local coords
+  const yaw = shipEuler.y;
+  const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
 
   // Draw enemies
   enemies.forEach(e => {
     if (!e.alive) return;
     const rel = e.mesh.position.clone().sub(shipPos);
-    // Project onto ship-relative XZ plane
-    const rx = rel.x * shipRight2.x + rel.z * shipRight2.y;
-    const rz = rel.x * shipFwd2.x + rel.z * shipFwd2.y;
-    const ry = rel.y;
-    const dist = Math.sqrt(rx * rx + rz * rz + ry * ry);
+    const dist = rel.length();
 
-    // Scale to radar
+    // Transform to ship-local space (rotate by -yaw around Y)
+    const localX = rel.x * cosY + rel.z * sinY;
+    const localZ = -rel.x * sinY + rel.z * cosY;
+    // In ship space: -Z is forward → localZ negative = ahead → top of radar
+
     const scale = (RADAR_R - 8) / RADAR_RANGE;
-    let px = RADAR_R + rx * scale;
-    let py = RADAR_R - rz * scale; // forward = up on radar
+    let px = RADAR_R + localX * scale;
+    let py = RADAR_R + localZ * scale;
 
     // Clamp to radar circle
     const dx = px - RADAR_R, dy = py - RADAR_R;
@@ -996,10 +996,10 @@ function drawRadar() {
     const sz = e.type === 4 ? 4 : 2.5;
     ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI * 2); ctx.fill();
 
-    // Up/down indicator (small triangle above/below dot)
-    if (Math.abs(ry) > 3) {
+    const relY = rel.y;
+    if (Math.abs(relY) > 3) {
       ctx.beginPath();
-      if (ry > 0) { // enemy is above
+      if (relY > 0) { // enemy is above
         ctx.moveTo(px, py - sz - 2); ctx.lineTo(px - 2, py - sz); ctx.lineTo(px + 2, py - sz);
       } else { // enemy is below
         ctx.moveTo(px, py + sz + 2); ctx.lineTo(px - 2, py + sz); ctx.lineTo(px + 2, py + sz);

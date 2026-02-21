@@ -79,7 +79,7 @@
 <div id="overlay">
   <h1>PIG GALAGA: SPACE</h1>
   <h2>Full 3D Pig Hunt!</h2>
-  <div class="info">Mouse to aim · WASD to fly</div>
+  <div class="info">Mouse to aim · WASD to fly · Q/E up/down</div>
   <div class="info">SPACE to shoot · B to bomb</div>
   <div class="info">Touch: drag to aim &amp; move · double-tap to bomb</div>
   <div class="start" id="startBtn">Click to Start</div>
@@ -592,24 +592,24 @@ function update(dt) {
   right.set(1, 0, 0).applyQuaternion(shipQuat);
   up.set(0, 1, 0).applyQuaternion(shipQuat);
 
-  // Thrust
-  const thrust = 0.008;
+  // Thrust — full 3D movement
+  const thrust = 0.018;
   const accel = new THREE.Vector3();
   if (keys['KeyW']) accel.add(fwd.clone().multiplyScalar(thrust));
-  if (keys['KeyS']) accel.add(fwd.clone().multiplyScalar(-thrust * 0.6));
-  if (keys['KeyA']) accel.add(right.clone().multiplyScalar(-thrust * 0.7));
-  if (keys['KeyD']) accel.add(right.clone().multiplyScalar(thrust * 0.7));
-  if (keys['ShiftLeft'] || keys['ShiftRight']) accel.add(up.clone().multiplyScalar(-thrust * 0.5));
-  if (keys['Space'] && !keys['shoot']) {} // Space is shoot, not thrust
+  if (keys['KeyS']) accel.add(fwd.clone().multiplyScalar(-thrust * 0.7));
+  if (keys['KeyA']) accel.add(right.clone().multiplyScalar(-thrust * 0.8));
+  if (keys['KeyD']) accel.add(right.clone().multiplyScalar(thrust * 0.8));
+  if (keys['KeyQ'] || keys['ShiftLeft'] || keys['ShiftRight']) accel.add(up.clone().multiplyScalar(-thrust * 0.6));
+  if (keys['KeyE'] || keys['ControlLeft']) accel.add(up.clone().multiplyScalar(thrust * 0.6));
 
-  // Touch movement
+  // Touch movement — full directional
   if (touchMoveId !== null) {
     const cx = window.innerWidth * 0.25;
     const cy = window.innerHeight * 0.5;
     const dx = (touchMoveX - cx) / (window.innerWidth * 0.25);
     const dy = (touchMoveY - cy) / (window.innerHeight * 0.25);
-    accel.add(fwd.clone().multiplyScalar(thrust * Math.max(0, -dy)));
-    accel.add(right.clone().multiplyScalar(thrust * 0.5 * dx));
+    accel.add(fwd.clone().multiplyScalar(thrust * -dy));  // up=forward, down=reverse
+    accel.add(right.clone().multiplyScalar(thrust * 0.6 * dx));
   }
 
   shipVel.add(accel);

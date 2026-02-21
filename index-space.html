@@ -765,14 +765,20 @@ function update(dt) {
       if (gl) gl.material.opacity = 0.08 + Math.sin(e.frame * 0.08) * 0.06;
     }
 
-    // Dive attack
+    // Dive attack — strafe past player, then return to formation
     if (e.diving) {
       e.diveTime++;
       const speed = 0.5 + wave * 0.03;
-      // Continuously track player throughout dive
-      e.diveDir.lerp(shipPos.clone().sub(e.mesh.position).normalize(), 0.06);
+
+      if (e.diveTime < 30) {
+        // Phase 1: Lock aim toward player (brief tracking)
+        e.diveDir.lerp(shipPos.clone().sub(e.mesh.position).normalize(), 0.08);
+      }
+      // Phase 2: Commit — fly straight on locked heading (no more tracking)
       e.mesh.position.add(e.diveDir.clone().multiplyScalar(speed));
-      if (e.diveTime > 180) {
+
+      if (e.diveTime > 120) {
+        // Phase 3: Done — rejoin formation from wherever we ended up
         e.diving = false;
       }
     }

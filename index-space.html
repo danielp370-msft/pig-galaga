@@ -1032,8 +1032,8 @@ function drawRadar() {
   ctx.beginPath(); ctx.moveTo(RADAR_R, 10); ctx.lineTo(RADAR_R, 130); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(10, RADAR_R); ctx.lineTo(130, RADAR_R); ctx.stroke();
 
-  // Rotate relative positions by ship yaw to get ship-local coords
-  const yaw = shipEuler.y;
+  // Rotate relative positions by negative ship yaw to get ship-local coords
+  const yaw = -shipEuler.y;
   const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
 
   // Draw enemies

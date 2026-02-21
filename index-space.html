@@ -576,7 +576,7 @@ function announceWave(w) {
 function startGame() {
   gameStarted = true;
   document.getElementById('overlay').classList.add('hidden');
-  renderer.domElement.requestPointerLock();
+  try { renderer.domElement.requestPointerLock(); } catch(e) {}
   initGame();
 }
 
@@ -584,11 +584,16 @@ function restartGame() {
   score = 0; lives = 3; wave = 0; bombs = 5;
   gameOver = false; invTimer = 0; baconTimer = 0;
   document.getElementById('overlay').classList.add('hidden');
-  renderer.domElement.requestPointerLock();
+  try { renderer.domElement.requestPointerLock(); } catch(e) {}
   initGame();
 }
 
 document.getElementById('overlay').addEventListener('click', () => {
+  if (!gameStarted) startGame();
+  else if (gameOver) restartGame();
+});
+document.getElementById('overlay').addEventListener('touchend', (ev) => {
+  ev.preventDefault();
   if (!gameStarted) startGame();
   else if (gameOver) restartGame();
 });
@@ -1212,7 +1217,8 @@ function playerHit() {
       `;
       ov.classList.remove('hidden');
       document.getElementById('startBtn').addEventListener('click', restartGame);
-      document.exitPointerLock();
+      document.getElementById('startBtn').addEventListener('touchend', (ev) => { ev.preventDefault(); restartGame(); });
+      try { document.exitPointerLock(); } catch(e) {}
     }
   }
 }

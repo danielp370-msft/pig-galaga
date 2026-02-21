@@ -11,7 +11,8 @@
 ### 🎬 Demo
 
 <!-- TO ADD YOUR VIDEO: Edit this README on GitHub, delete this comment and the placeholder text below, then drag-drop your .mp4 file here. GitHub will auto-upload it and generate the video embed. -->
-*Video coming soon — drag-drop your MP4 here when editing on GitHub!*
+
+https://github.com/user-attachments/assets/5debcca7-288f-4209-a772-377fd6d7065b
 
 ## 🐖 Meet the Pig Family
 

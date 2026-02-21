@@ -797,9 +797,9 @@ function update(dt) {
       const myTarget = interceptPoint.clone().add(e.origOffset);
       const toTarget = myTarget.clone().sub(e.homePos);
       const homeDist = toTarget.length();
-      // Fleet 0 closes in via lerp; reinforcements move at constant speed
+      // Fleet 0 holds distance; reinforcements always close in
       if (e.fleet === 0) {
-        e.homePos.lerp(myTarget, 0.012);
+        if (homeDist > 12) e.homePos.lerp(myTarget, 0.012);
       } else {
         const dir = toTarget.normalize().multiplyScalar(Math.min(reinforceVel, homeDist));
         e.homePos.add(dir);
@@ -823,10 +823,16 @@ function update(dt) {
         e.homePos.y + Math.sin(e.orbitAngle * 0.7) * orbR * 0.5,
         e.homePos.z + Math.cos(e.orbitAngle) * orbR
       );
-      // Return gently after a dive, normal speed otherwise
+      // Move toward orbit target — fast when far, gentle when close
       const returnDist = e.mesh.position.distanceTo(orbitTarget);
-      const lerpSpeed = returnDist > 10 ? 0.015 : 0.08;
-      e.mesh.position.lerp(orbitTarget, lerpSpeed);
+      if (returnDist > 20) {
+        // Far away: constant speed approach so we don't crawl
+        const moveDir = orbitTarget.clone().sub(e.mesh.position).normalize();
+        e.mesh.position.add(moveDir.multiplyScalar(Math.min(returnDist * 0.05, reinforceVel + 0.1)));
+      } else {
+        const lerpSpeed = returnDist > 10 ? 0.04 : 0.08;
+        e.mesh.position.lerp(orbitTarget, lerpSpeed);
+      }
     }
 
     // Face toward player

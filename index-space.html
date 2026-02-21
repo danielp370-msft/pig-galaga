@@ -577,13 +577,18 @@ function initGame() {
   wave++;
   announceWave(wave);
   spawnWave(wave);
-  // Compute formation offsets relative to center of mass
+  // Compute formation offsets relative to each fleet's center of mass
   if (enemies.length > 0) {
-    const center = new THREE.Vector3();
-    let count = 0;
-    enemies.forEach(e => { if (e.alive) { center.add(e.homePos); count++; } });
-    center.divideScalar(count || 1);
-    enemies.forEach(e => { if (e.alive) e.origOffset = e.homePos.clone().sub(center); });
+    const fleetCenters = {};
+    const fleetCounts = {};
+    enemies.forEach(e => {
+      if (!e.alive) return;
+      if (!fleetCenters[e.fleet]) { fleetCenters[e.fleet] = new THREE.Vector3(); fleetCounts[e.fleet] = 0; }
+      fleetCenters[e.fleet].add(e.homePos);
+      fleetCounts[e.fleet]++;
+    });
+    for (const f in fleetCenters) fleetCenters[f].divideScalar(fleetCounts[f] || 1);
+    enemies.forEach(e => { if (e.alive) e.origOffset = e.homePos.clone().sub(fleetCenters[e.fleet]); });
   }
 }
 
